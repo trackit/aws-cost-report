@@ -5,6 +5,7 @@ import httplib2
 import os
 import csv
 import itertools
+import pprint
 
 from apiclient import discovery
 from oauth2client import client
@@ -51,6 +52,12 @@ PRETTY_FIELD_GROUPS = {
     'hourly_cost_per_instance': 'Hourly cost per instance',
 }
 
+NUMFORMAT_CURRENCY = '#,##0.000 [$USD]'
+NUMFORMAT_PERCENT = '0.00%'
+
+def _with_trailing(it, trail):
+    return itertools.chain(it, itertools.repeat(trail))
+
 def get_credentials():
     """Gets valid user credentials from storage.
 
@@ -81,70 +88,105 @@ def get_credentials():
 
 def reserved_summary():
     def cost_monthly(sheet, row, column, field):
-        base_hourly = sheet.field_index('cost_ondemand', 0)[0]
-        base_monthly = sheet.field_index('cost_monthly_ondemand', 0)[0]
+        base_hourly = sheet.field_index('cost_ondemand')
+        base_monthly = sheet.field_index('cost_monthly_ondemand')
         return Formula('={}*{}*720'.format(
             sheet.field_address('count', row, 2),
             sheet.address(base_hourly + (column - base_monthly), row),
         ))
     def savings_monthly(sheet, row, column, field):
-        base_ondemand = sheet.field_index('cost_ondemand', 0)[0]
-        base_reserved = sheet.field_index('cost_reserved_worst', 0)[0]
-        base_savings = sheet.field_index('savings_reserved_worst', 0)[0]
+        base_ondemand = sheet.field_index('cost_ondemand')
+        base_reserved = sheet.field_index('cost_reserved_worst')
+        base_savings = sheet.field_index('savings_reserved_worst')
         return Formula('=1-{}/{}'.format(
             sheet.address(base_reserved + (column - base_savings), row),
             sheet.field_address('cost_ondemand', row, 2),
         ))
-    fields = map(Field._make, [
-        ('instance_type'               , 'instance_type'               , str             , 'reservation'              , 'Instance type')     ,
-        ('availability_zone'           , 'availability_zone'           , str             , 'reservation'              , 'Availability zone') ,
-        ('tenancy'                     , 'tenancy'                     , str             , 'reservation'              , 'Tenancy')           ,
-        ('product'                     , 'product'                     , str             , 'reservation'              , 'Product')           ,
-        ('count'                       , 'count'                       , int             , None                       , 'Count')             ,
-        ('count_reserved'              , 'count_reserved'              , int             , None                       , 'Count (reserved)')  ,
-        ('cost_ondemand'               , 'cost_ondemand'               , float           , 'hourly_cost_per_instance' , 'On demand')         ,
-        ('cost_reserved_worst'         , 'cost_reserved_worst'         , float           , 'hourly_cost_per_instance' , 'Worst reserved')    ,
-        ('cost_reserved_best'          , 'cost_reserved_best'          , float           , 'hourly_cost_per_instance' , 'Best reserved')     ,
-        ('cost_monthly_ondemand'       , 'cost_monthly_ondemand'       , cost_monthly    , 'monthly_cost_total'       , 'On demand')         ,
-        ('cost_monthly_reserved_worst' , 'cost_monthly_reserved_worst' , cost_monthly    , 'monthly_cost_total'       , 'Worst reserved')    ,
-        ('cost_monthly_reserved_best'  , 'cost_monthly_reserved_best'  , cost_monthly    , 'monthly_cost_total'       , 'Best reserved')     ,
-        ('savings_reserved_worst'      , 'savings_reserved_worst'      , savings_monthly , 'savings'                  , 'Worst reserved')    ,
-        ('savings_reserved_best'       , 'savings_reserved_best'       , savings_monthly , 'savings'                  , 'Best reserved')     ,
-    ])
-    field_groups = map(FieldGroup._make, [
-        ('reservation', 'Reservation'),
-        ('hourly_cost_per_instance', 'Hourly cost per instance'),
-        ('monthly_cost_total', 'Monthly cost total'),
-        ('savings', 'Savings over on demand'),
-    ])
+    fields = (
+        FieldGroup('Reservation', (
+            Field('instance_type'               , 'instance_type'               , str             , 'Instance type'     , None)               ,
+            Field('availability_zone'           , 'availability_zone'           , str             , 'Availability zone' , None)               ,
+            Field('tenancy'                     , 'tenancy'                     , str             , 'Tenancy'           , None)               ,
+            Field('product'                     , 'product'                     , str             , 'Product'           , None)               ,
+        )),
+        Field(    'count'                       , 'count'                       , int             , 'Count'             , '0')                ,
+        Field(    'count_reserved'              , 'count_reserved'              , int             , 'Count (reserved)'  , '0')                ,
+        FieldGroup('Hourly cost per instance', (
+            Field('cost_ondemand'               , 'cost_ondemand'               , float           , 'On demand'         , NUMFORMAT_CURRENCY) ,
+            Field('cost_reserved_worst'         , 'cost_reserved_worst'         , float           , 'Worst reserved'    , NUMFORMAT_CURRENCY) ,
+            Field('cost_reserved_best'          , 'cost_reserved_best'          , float           , 'Best reserved'     , NUMFORMAT_CURRENCY) ,
+        )),
+        FieldGroup('Monthly cost total', (
+            Field('cost_monthly_ondemand'       , 'cost_monthly_ondemand'       , cost_monthly    , 'On demand'         , NUMFORMAT_CURRENCY) ,
+            Field('cost_monthly_reserved_worst' , 'cost_monthly_reserved_worst' , cost_monthly    , 'Worst reserved'    , NUMFORMAT_CURRENCY) ,
+            Field('cost_monthly_reserved_best'  , 'cost_monthly_reserved_best'  , cost_monthly    , 'Best reserved'     , NUMFORMAT_CURRENCY) ,
+        )),
+        FieldGroup('Savings over on demand', (
+            Field('savings_reserved_worst'      , 'savings_reserved_worst'      , savings_monthly , 'Worst reserved'    , NUMFORMAT_PERCENT)  ,
+            Field('savings_reserved_best'       , 'savings_reserved_best'       , savings_monthly , 'Best reserved'     , NUMFORMAT_PERCENT)  ,
+        ))
+    )
     with open('instances-reservation-usage.us-east-1.csv') as f:
         reader = csv.DictReader(f)
         sheet = Sheet(
             source=reader,
             fields=fields,
-            field_groups=field_groups,
             sheet_id=1,
         )
         sheet.properties['title'] = 'Reserved instance summary'
         sheet_data = sheet.to_dict()
     return sheet_data
 
-def weekly_variations():
-    with open('absolute.csv') as f:
+def reservation_usage_summary():
+    fields = (
+        FieldGroup('Reservation', (
+            Field('instance_type'               , 'instance_type'               , str             , 'Instance type'     , None)               ,
+            Field('availability_zone'           , 'availability_zone'           , str             , 'Availability zone' , None)               ,
+            Field('tenancy'                     , 'tenancy'                     , str             , 'Tenancy'           , None)               ,
+            Field('product'                     , 'product'                     , str             , 'Product'           , None)               ,
+        )),
+        Field(    'count_reserved'              , 'count'                       , int             , 'Count (reserved)'  , None)               ,
+        Field(    'count_used'                  , 'count_used'                  , int             , 'Count (used)'      , None)               ,
+    )
+    with open('reservation-usage.us-west-2.csv') as f:
         reader = csv.DictReader(f)
-        fields = map(Field._make, [
-            ('usage' , 'usage' , str   , None    , 'Usage type'),
-        ] + [
-            (isoweek , isoweek , float , 'weeks' , isoweek)
-            for isoweek in reader.fieldnames[1:]
-        ])
-        field_groups = [
-            FieldGroup('weeks', 'Weeks'),
-        ]
         sheet = Sheet(
             source=reader,
             fields=fields,
-            field_groups=field_groups,
+            sheet_id=3,
+        )
+        sheet.properties['title'] = 'Reservation usage summary'
+        sheet_data = sheet.to_dict()
+    return sheet_data
+
+def weekly_variations():
+    def variation(sheet, row, column, field):
+        prev_address = sheet.address(column - 1, row)
+        next_address = sheet.address(column + 1, row)
+        return Formula('=IF({0}=0,"",{1}/{0}-1)'.format(
+            prev_address,
+            next_address,
+        ))
+    with open('absolute.csv') as f:
+        reader = csv.DictReader(f)
+        fields = (
+            Field(    'usage' , 'usage' , str   , 'Usage type' , None),
+            FieldGroup('Monthly cost', tuple(
+                FieldGroup(isoweek,
+                    (
+                        (
+                            Field(isoweek+'_var',  isoweek, variation, 'Variation', NUMFORMAT_PERCENT),
+                        ) if not is_first_week else ()
+                    ) + (
+                        Field(isoweek+'_cost', isoweek, float  , 'Cost'      , NUMFORMAT_CURRENCY),
+                    )
+                )
+                for isoweek, is_first_week in zip(reader.fieldnames[1:], _with_trailing((True,), False))
+            ))
+        )
+        sheet = Sheet(
+            source=reader,
+            fields=fields,
             sheet_id=2,
         )
         sheet.properties['title'] = 'Cost variations'
@@ -167,18 +209,20 @@ def main():
 
     reserved_summary_data = reserved_summary()
     weekly_variations_data = weekly_variations()
+    reservation_usage_summary_data = reservation_usage_summary()
 
     body = {
         'properties': {
             'title': 'my generated spreadsheet',
         },
         'sheets': [
-            reserved_summary_data,
             weekly_variations_data,
+            reserved_summary_data,
+            reservation_usage_summary_data,
         ],
     }
 
-    print(json.dumps(body, indent=4))
+    #print(json.dumps(body, indent=4))
 
     spreadsheet = service.spreadsheets().create(body=body)
 

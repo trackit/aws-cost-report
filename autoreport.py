@@ -1,4 +1,4 @@
-#!/usr/bin/env python2.7
+#!/usr/bin/env python3
 
 import boto3
 import itertools
@@ -172,6 +172,9 @@ def get_instance_matchings(instance_offerings, reserved_instances, ondemand_inst
         [ri, ri.count]
         for ri in reserved_instances
     ]
+    print("BEGIN MATCHING")
+    pp.pprint(reserved_instances)
+    pp.pprint(remaining_reserved_instances)
     matches = []
     for oi in sorted(ondemand_instances, reverse=True, key=lambda oi: oi[0].availability_zone[::-1]):
         matching_reserved = (
@@ -277,4 +280,4 @@ if __name__ == '__main__':
     with open('instances-reservation-usage.{}.csv'.format(region), 'w') as f:
         write_matched_instances(f, matched_instances)
     with open('reservation-usage.{}.csv'.format(region), 'w') as f:
-        write_reservation_usage(sys.stdout, reservation_usage)
+        write_reservation_usage(f, reservation_usage)
