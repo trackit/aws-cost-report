@@ -8,6 +8,8 @@ Field = collections.namedtuple('Field', ['name', 'index', 'type', 'pretty', 'for
 FieldGroup = collections.namedtuple('FieldGroup', ['pretty', 'children'])
 FieldRoot = collections.namedtuple('FieldRoot', ['children'])
 Formula = collections.namedtuple('Formula', ['value'])
+ConditionalFormat = collections.namedtuple('ConditionalFormat', ['type', 'value', 'format'])
+ColumnConditionalFormat = collections.namedtuple('ColumnConditionalFormat', ['field', 'formats'])
 
 @singledispatch
 def _field_depth(arg):
@@ -52,6 +54,21 @@ def _(field_group, row_num):
         return [field_group]
     else:
         return sum((_field_slice(f, row_num - 1) for f in field_group.children), [])
+
+@singledispatch
+def field_flatten(arg):
+    raise ValueError("arg is {}".format(type(arg)))
+
+@field_flatten.register(FieldRoot)
+@field_flatten.register(FieldGroup)
+def _(field_group):
+    return itertools.chain.from_iterable(
+        field_flatten(c) for c in field_group.children
+    )
+
+@field_flatten.register(Field)
+def _(field):
+    return (field,)
 
 @_field_slice.register(FieldRoot)
 def _(field_root, row_num):
@@ -127,11 +144,12 @@ class Sheet:
         Formula: 'formulaValue',
     })
 
-    def __init__(self, source, fields, sheet_id=None):
+    def __init__(self, source, fields, fields_conditional_formats=(), sheet_id=None):
         self._source = source
         self._fields = FieldRoot(fields)
         self._sheet_id = sheet_id or random.randint(0, 2**32)
         self.properties = {}
+        self._fields_conditional_formats = fields_conditional_formats
         self._row_count = None
         self._HEADER_ROW = 0
         self._HEADER_COL = 0
@@ -143,6 +161,7 @@ class Sheet:
             'properties': self._to_dict_properties(),
             'data': self._to_dict_data(),
             'merges': self._to_dict_merges(),
+            'conditionalFormats': self._to_dict_conditional_formats(),
         }
 
     def field_index(self, field, row_num=None):
@@ -188,6 +207,39 @@ class Sheet:
             if type(value) == Formula:
                 value = value.value
             return cell_type, value
+
+    def _column_range(self, field):
+        col_start = self.field_index(field) + self._BODY_COL
+        row_start = self._BODY_ROW
+        col_end   = col_start + 1
+        row_end   = row_start + self._row_count
+        return {
+            'startColumnIndex': col_start,
+            'endColumnIndex': col_end,
+            'startRowIndex': row_start,
+            'endRowIndex': row_end,
+            'sheetId': self._sheet_id,
+        }
+
+    def _to_dict_conditional_formats(self):
+        return [
+            {
+                'ranges': self._column_range(column_format.field),
+                'booleanRule': {
+                    'condition': {
+                        'type': format.type,
+                        'values': [
+                            {
+                                'userEnteredValue': format.value,
+                            },
+                        ],
+                    },
+                    'format': format.format
+                }
+            }
+            for column_format in self._fields_conditional_formats
+            for format in column_format.formats
+        ]
 
     def _to_dict_properties(self):
         res = self.properties.copy()
@@ -264,27 +316,6 @@ class Sheet:
             'startColumn': self._BODY_COL,
             'rowData': row_data,
         }
-
-    def _merge_group(self, group, fields):
-        if group is not None:
-            return ({
-                'startColumnIndex': fields[0][0] + self._HEADER_COL,
-                'endColumnIndex': fields[0][0] + len(fields) + self._HEADER_COL,
-                'startRowIndex': 0 + self._HEADER_ROW,
-                'endRowIndex': 1 + self._HEADER_ROW,
-                'sheetId': self._sheet_id,
-            },)
-        else:
-            return (
-                {
-                    'startColumnIndex': index + self._HEADER_COL,
-                    'endColumnIndex': index + 1 + self._HEADER_COL,
-                    'startRowIndex': 0 + self._HEADER_ROW,
-                    'endRowIndex': 2 + self._HEADER_ROW,
-                    'sheetId': self._sheet_id,
-                }
-                for index, _ in fields
-            )
 
     def _to_dict_merges(self):
         merges = []

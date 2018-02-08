@@ -53,6 +53,8 @@ compute_sheet_platform = {
     'SUSE'       : 'SUSE',
 }
 
+DEFAULT_REGION=boto3._get_default_session().region_name
+
 _az_to_region_re = re.compile(r'^(.+?)[a-z]?$')
 def az_to_region(az):
     return _az_to_region_re.match(az).group(1)
@@ -77,7 +79,7 @@ def get_reserved_instances(ec2, region):
         InstanceReservation(
             type = InstanceType(
                 size              = ri['InstanceType'],
-                availability_zone = ri['AvailabilityZone'] if ri['Scope'] == 'Availability Zone' else 'us-east-1',
+                availability_zone = ri['AvailabilityZone'] if ri['Scope'] == 'Availability Zone' else DEFAULT_REGION,
                 tenancy           = ri['InstanceTenancy'],
                 product           = ri['ProductDescription'],
             ),

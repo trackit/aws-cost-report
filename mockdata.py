@@ -6,7 +6,7 @@ reserved_instances = (
         InstanceReservation(type=InstanceType(size='m4.xlarge', availability_zone='us-east-1', tenancy='default', product='Linux/UNIX'), count=30),
         InstanceReservation(type=InstanceType(size='c4.xlarge', availability_zone='us-east-1', tenancy='default', product='Linux/UNIX'), count=15)]
 )
-#reserved_instances = None
+reserved_instances = None
 
 ondemand_instances = (
     [   (   InstanceType(size='c5.large', availability_zone='us-east-1f', tenancy='default', product='Linux/UNIX'), 3),
@@ -41,7 +41,7 @@ ondemand_instances = (
         (   InstanceType(size='m4.large', availability_zone='us-east-1c', tenancy='default', product='Linux/UNIX'), 1),
         (   InstanceType(size='c4.2xlarge', availability_zone='us-east-1c', tenancy='default', product='Linux/UNIX'), 1)]
 )
-instance_types = None
+ondemand_instances = None
 
 instance_offerings = (
     [   InstanceOffering(type=InstanceType(size='t2.medium', availability_zone='us-east-1', tenancy='default', product='Linux/UNIX'), cost_ondemand=0.0464, cost_reserved_worst=0.0331, cost_reserved_best=0.017427701674277016),
@@ -79,4 +79,4 @@ instance_offerings = (
         InstanceOffering(type=InstanceType(size='c4.2xlarge', availability_zone='us-east-1c', tenancy='default', product='Linux/UNIX'), cost_ondemand=0.398, cost_reserved_worst=0.29, cost_reserved_best=0.15509893455098936),
         InstanceOffering(type=InstanceType(size='m4.xlarge', availability_zone='us-east-1b', tenancy='default', product='Linux/UNIX'), cost_ondemand=0.2, cost_reserved_worst=0.1425, cost_reserved_best=0.07519025875190259)]
 )
-#instance_offerings = None
+instance_offerings = None

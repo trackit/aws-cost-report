@@ -54,6 +54,7 @@ PRETTY_FIELD_GROUPS = {
 
 NUMFORMAT_CURRENCY = '#,##0.000 [$USD]'
 NUMFORMAT_PERCENT = '0.00%'
+NUMFORMAT_PERCENT_VAR = '\+0.00%;\-0.00%'
 
 def _with_trailing(it, trail):
     return itertools.chain(it, itertools.repeat(trail))
@@ -126,7 +127,7 @@ def reserved_summary():
             Field('savings_reserved_best'       , 'savings_reserved_best'       , savings_monthly , 'Best reserved'     , NUMFORMAT_PERCENT)  ,
         ))
     )
-    with open('instances-reservation-usage.us-east-1.csv') as f:
+    with open('instances-reservation-usage.us-west-2.csv') as f:
         reader = csv.DictReader(f)
         sheet = Sheet(
             source=reader,
@@ -159,6 +160,11 @@ def reservation_usage_summary():
         sheet_data = sheet.to_dict()
     return sheet_data
 
+COLOR_RED_BG   = { 'red': 0xFF/float(0xFF), 'green': 0xCC/float(0xFF), 'blue': 0xCC/float(0xFF) }
+COLOR_RED_FG   = { 'red': 0xCC/float(0xFF), 'green': 0x00/float(0xFF), 'blue': 0x00/float(0xFF) }
+COLOR_GREEN_BG = { 'red': 0xCC/float(0xFF), 'green': 0xFF/float(0xFF), 'blue': 0xCC/float(0xFF) }
+COLOR_GREEN_FG = { 'red': 0x00/float(0xFF), 'green': 0x66/float(0xFF), 'blue': 0x00/float(0xFF) }
+
 def weekly_variations():
     def variation(sheet, row, column, field):
         prev_address = sheet.address(column - 1, row)
@@ -175,7 +181,7 @@ def weekly_variations():
                 FieldGroup(isoweek,
                     (
                         (
-                            Field(isoweek+'_var',  isoweek, variation, 'Variation', NUMFORMAT_PERCENT),
+                            Field(isoweek+'_var',  isoweek, variation, 'Variation', NUMFORMAT_PERCENT_VAR),
                         ) if not is_first_week else ()
                     ) + (
                         Field(isoweek+'_cost', isoweek, float  , 'Cost'      , NUMFORMAT_CURRENCY),
@@ -184,9 +190,31 @@ def weekly_variations():
                 for isoweek, is_first_week in zip(reader.fieldnames[1:], _with_trailing((True,), False))
             ))
         )
+        variation_conditional_format = (
+            ConditionalFormat('NUMBER_LESS_THAN_EQ', '0', {
+                'backgroundColor': COLOR_RED_BG,
+                'textFormat': {
+                    'foregroundColor': COLOR_RED_FG,
+                },
+            }),
+            ConditionalFormat('NUMBER_GREATER', '0', {
+                'backgroundColor': COLOR_GREEN_BG,
+                'textFormat': {
+                    'foregroundColor': COLOR_GREEN_FG,
+                },
+            })
+        )
+        variation_columns = (
+            f
+            for f in field_flatten(FieldRoot(fields)) if '_var' in f.name
+        )
         sheet = Sheet(
             source=reader,
             fields=fields,
+            fields_conditional_formats=tuple(
+                ColumnConditionalFormat(column, variation_conditional_format)
+                for column in variation_columns
+            ),
             sheet_id=2,
         )
         sheet.properties['title'] = 'Cost variations'
