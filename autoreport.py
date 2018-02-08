@@ -83,6 +83,8 @@ def get_reserved_instances(ec2, region):
                 tenancy           = ri['InstanceTenancy'],
                 product           = ri['ProductDescription'],
             ),
+            cost_hourly       = sum(rc['Amount'] for rc in ri['RecurringCharges']),
+            cost_upfront      = ri['FixedPrice'],
             count = ri['InstanceCount'],
         )
         for ri in reserved_instances_data['ReservedInstances']
@@ -260,6 +262,8 @@ def write_reservation_usage(f, reservation_usage, header=True):
         'availability_zone',
         'tenancy',
         'product',
+        'cost_hourly',
+        'cost_upfront',
         'count',
         'count_used',
     ])
@@ -271,6 +275,8 @@ def write_reservation_usage(f, reservation_usage, header=True):
             'availability_zone' : ru.type.availability_zone,
             'tenancy'           : ru.type.tenancy,
             'product'           : ru.type.product,
+            'cost_hourly'       : ru.cost_hourly,
+            'cost_upfront'      : ru.cost_upfront,
             'count'             : ru.count,
             'count_used'        : used,
         })

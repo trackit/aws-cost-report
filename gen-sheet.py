@@ -56,6 +56,8 @@ NUMFORMAT_CURRENCY = '#,##0.000 [$USD]'
 NUMFORMAT_PERCENT = '0.00%'
 NUMFORMAT_PERCENT_VAR = '\+0.00%;\-0.00%'
 
+REGION='us-east-1'
+
 def _with_trailing(it, trail):
     return itertools.chain(it, itertools.repeat(trail))
 
@@ -127,7 +129,7 @@ def reserved_summary():
             Field('savings_reserved_best'       , 'savings_reserved_best'       , savings_monthly , 'Best reserved'     , NUMFORMAT_PERCENT)  ,
         ))
     )
-    with open('instances-reservation-usage.us-west-2.csv') as f:
+    with open('instances-reservation-usage.{}.csv'.format(REGION)) as f:
         reader = csv.DictReader(f)
         sheet = Sheet(
             source=reader,
@@ -138,7 +140,23 @@ def reserved_summary():
         sheet_data = sheet.to_dict()
     return sheet_data
 
+def _returns(value):
+    def f(*args, **kwargs):
+        return value
+    return f
+
 def reservation_usage_summary():
+    def effective_cost(sheet, row, column, field):
+        return Formula('={}/720+{}'.format(
+            sheet.field_address('cost_upfront', row, 2),
+            sheet.field_address('cost_hourly', row, 2),
+        ))
+    def monthly_losses(sheet, row, column, field):
+        return Formula('({reserved}-{used})*{effective}*720'.format(
+            reserved =sheet.field_address('count_reserved', row, 2),
+            used     =sheet.field_address('count_used', row, 2),
+            effective=sheet.field_address('effective_cost', row, 2),
+        ))
     fields = (
         FieldGroup('Reservation', (
             Field('instance_type'               , 'instance_type'               , str             , 'Instance type'     , None)               ,
@@ -146,10 +164,18 @@ def reservation_usage_summary():
             Field('tenancy'                     , 'tenancy'                     , str             , 'Tenancy'           , None)               ,
             Field('product'                     , 'product'                     , str             , 'Product'           , None)               ,
         )),
-        Field(    'count_reserved'              , 'count'                       , int             , 'Count (reserved)'  , None)               ,
-        Field(    'count_used'                  , 'count_used'                  , int             , 'Count (used)'      , None)               ,
+        FieldGroup('Count', (
+            Field('count_reserved'              , 'count'                       , int             , 'Reserved'          , None)               ,
+            Field('count_used'                  , 'count_used'                  , int             , 'Used'              , None)               ,
+        )),
+        FieldGroup('Cost per instance', (
+            Field('cost_upfront'                , 'cost_upfront'                , float           , 'Upfront'           , NUMFORMAT_CURRENCY) ,
+            Field('cost_hourly'                 , 'cost_hourly'                 , float           , 'Hourly'            , NUMFORMAT_CURRENCY) ,
+            Field('effective_cost'              , 'effective_cost'              , effective_cost  , 'Effective', NUMFORMAT_CURRENCY),
+        )),
+        Field(    'monthly_losses'              , 'monthly_losses'              , monthly_losses  , 'Monthly losses', NUMFORMAT_CURRENCY),
     )
-    with open('reservation-usage.us-west-2.csv') as f:
+    with open('reservation-usage.{}.csv'.format(REGION)) as f:
         reader = csv.DictReader(f)
         sheet = Sheet(
             source=reader,
@@ -173,6 +199,17 @@ def weekly_variations():
             prev_address,
             next_address,
         ))
+    def total(sheet, row, column, field):
+        cost_fields = [
+            f
+            for f in sheet.fields_flat() if '_cost' in f.name
+        ]
+        return Formula('=SUM({})'.format(
+            ','.join(
+                sheet.field_address(f, row)
+                for f in cost_fields
+            )
+        ))
     with open('absolute.csv') as f:
         reader = csv.DictReader(f)
         fields = (
@@ -188,7 +225,8 @@ def weekly_variations():
                     )
                 )
                 for isoweek, is_first_week in zip(reader.fieldnames[1:], _with_trailing((True,), False))
-            ))
+            )),
+            Field('total', 'total', total, 'Total', NUMFORMAT_CURRENCY),
         )
         variation_conditional_format = (
             ConditionalFormat('NUMBER_LESS_THAN_EQ', '0', {
@@ -208,8 +246,13 @@ def weekly_variations():
             f
             for f in field_flatten(FieldRoot(fields)) if '_var' in f.name
         )
+        source = sorted(
+            reader,
+            key=(lambda row: sum(float(v) for k, v in row.items() if k != 'usage')),
+            reverse=True,
+        )
         sheet = Sheet(
-            source=reader,
+            source=source,
             fields=fields,
             fields_conditional_formats=tuple(
                 ColumnConditionalFormat(column, variation_conditional_format)

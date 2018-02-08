@@ -14,6 +14,8 @@ InstanceReservation = collections.namedtuple(
     'InstanceReservation',
     [
         'type',
+        'cost_hourly',
+        'cost_upfront',
         'count',
     ]
 )

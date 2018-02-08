@@ -195,6 +195,9 @@ class Sheet:
             n = n // 26 - 1
         return ''.join(map(chr, res))
 
+    def fields_flat(self):
+        return _field_flatten(self._fields)
+
     def _cell_contents(self, row, field, row_num, col_num):
         if field.type in (str, int, float):
             if row[field.index] == '':
@@ -205,7 +208,7 @@ class Sheet:
             value = field.type(self, row_num, col_num, field)
             cell_type = Sheet._CELL_TYPES[type(value)]
             if type(value) == Formula:
-                value = value.value
+                value = value.value if value.value.startswith('=') else '={}'.format(value.value)
             return cell_type, value
 
     def _column_range(self, field):
