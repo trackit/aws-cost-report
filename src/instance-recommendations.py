@@ -95,7 +95,7 @@ def get_recommendation(instance):
         instance_type_str = instance['InstanceType']
         instance_type = str_to_instance_size(instance_type_str)
         instance_id = instance['InstanceId']
-        instance_name = next_or((tag['Value'] for tag in instance['Tags'] if tag['Key'] == 'Name'), '')
+        instance_name = next_or((tag['Value'] for tag in instance.get('Tags', []) if tag['Key'] == 'Name'), '')
         instance_lifecycle = instance.get('InstanceLifecycle', 'ondemand')
         cpu_usage = get_cpu_usage(cloudwatch, now, instance_id)
         recommendation = recommended_size(instance_type.size, cpu_usage) if cpu_usage is not None else 'insufficient_data'
