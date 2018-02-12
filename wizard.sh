@@ -79,6 +79,10 @@ function get_billing_data() {
 	popd
 }
 
+function get_cost_data() {
+	retry src/get-costs.sh
+}
+
 function get_instance_data() {
 	retry aws_env src/autoreport.py
 	retry aws_env src/instance-recommendations.py
@@ -137,6 +141,7 @@ function auto_report() {
 	set_profile
 	set_region
 	get_billing_data
+	get_cost_data
 	get_instance_data
 	build_billing_diff
 	build_sheet
@@ -149,6 +154,7 @@ function main() {
 		clear_data \
 		set_profile \
 		set_region \
+		get_cost_data \
 		get_billing_data \
 		get_instance_data \
 		build_billing_diff \
