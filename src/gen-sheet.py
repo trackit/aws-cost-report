@@ -241,13 +241,13 @@ def weekly_variations():
             Field('total', 'total', total, 'Total', NUMFORMAT_CURRENCY),
         )
         variation_conditional_format = (
-            ConditionalFormat('NUMBER_LESS_THAN_EQ', '0', {
+            ConditionalFormat('NUMBER_GREATER', '0', {
                 'backgroundColor': COLOR_RED_BG,
                 'textFormat': {
                     'foregroundColor': COLOR_RED_FG,
                 },
             }),
-            ConditionalFormat('NUMBER_GREATER', '0', {
+            ConditionalFormat('NUMBER_LESS_THAN_EQ', '0', {
                 'backgroundColor': COLOR_GREEN_BG,
                 'textFormat': {
                     'foregroundColor': COLOR_GREEN_FG,
