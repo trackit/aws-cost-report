@@ -80,12 +80,12 @@ function get_billing_data() {
 }
 
 function get_cost_data() {
-	retry src/get-costs.sh
+	retry src/get_ec2_costs.sh
 }
 
 function get_instance_data() {
-	retry aws_env src/autoreport.py
-	retry aws_env src/instance-recommendations.py
+	retry aws_env src/get_ec2_data.py
+	retry aws_env src/get_ec2_recommendations.py
 }
 
 function retry() {
@@ -103,11 +103,11 @@ function retry() {
 }
 
 function build_billing_diff() {
-	src/usagecostdiff.py
+	src/get_bill_diff.py
 }
 
 function build_sheet() {
-	retry src/gen-sheet.py
+	retry src/make_sheet.py
 }
 
 function before_action_choice() {

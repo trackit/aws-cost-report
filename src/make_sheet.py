@@ -60,6 +60,11 @@ IN_RESERVATION_USAGE_DIR             = 'out/reservation-usage'
 IN_ABSOLUTE_COST_PER_MONTH           = 'out/absolute.csv'
 IN_INSTANCE_SIZE_RECOMMENDATIONS_DIR = 'out/instance-size-recommendation'
 
+COLOR_RED_BG   = { 'red': 0xFF/float(0xFF), 'green': 0xCC/float(0xFF), 'blue': 0xCC/float(0xFF) }
+COLOR_RED_FG   = { 'red': 0xCC/float(0xFF), 'green': 0x00/float(0xFF), 'blue': 0x00/float(0xFF) }
+COLOR_GREEN_BG = { 'red': 0xCC/float(0xFF), 'green': 0xFF/float(0xFF), 'blue': 0xCC/float(0xFF) }
+COLOR_GREEN_FG = { 'red': 0x00/float(0xFF), 'green': 0x66/float(0xFF), 'blue': 0x00/float(0xFF) }
+
 def rows_folder(dirpath):
     for filename in os.listdir(dirpath):
         filepath = os.path.join(dirpath, filename)
@@ -143,11 +148,23 @@ def reserved_summary():
             Field('savings_reserved_best'       , 'savings_reserved_best'       , savings_monthly , 'Best reserved'     , NUMFORMAT_PERCENT)  ,
         ))
     )
+    conditional_format = (
+        ConditionalFormat('CUSTOM_FORMULA', '=(INDIRECT(ADDRESS(ROW(), COLUMN() - 1)) = INDIRECT(ADDRESS(ROW(), COLUMN())))', {
+            'backgroundColor': COLOR_GREEN_BG,
+            'textFormat': {
+                'foregroundColor': COLOR_GREEN_FG,
+            },
+        }),
+    )
     records = rows_folder(IN_INSTANCE_RESERVATION_USAGE_DIR)
     sheet = Sheet(
         source=records,
         fields=fields,
         sheet_id=1,
+        fields_conditional_formats=tuple(
+            ColumnConditionalFormat(column, conditional_format)
+            for column in field_flatten(FieldRoot(fields)) if column.name == 'count_reserved'
+        )
     )
     sheet.properties['title'] = 'Reserved instance summary'
     sheet_data = sheet.to_dict()
@@ -197,11 +214,6 @@ def reservation_usage_summary():
     sheet.properties['title'] = 'Reservation usage summary'
     sheet_data = sheet.to_dict()
     return sheet_data
-
-COLOR_RED_BG   = { 'red': 0xFF/float(0xFF), 'green': 0xCC/float(0xFF), 'blue': 0xCC/float(0xFF) }
-COLOR_RED_FG   = { 'red': 0xCC/float(0xFF), 'green': 0x00/float(0xFF), 'blue': 0x00/float(0xFF) }
-COLOR_GREEN_BG = { 'red': 0xCC/float(0xFF), 'green': 0xFF/float(0xFF), 'blue': 0xCC/float(0xFF) }
-COLOR_GREEN_FG = { 'red': 0x00/float(0xFF), 'green': 0x66/float(0xFF), 'blue': 0x00/float(0xFF) }
 
 def weekly_variations():
     def variation(sheet, row, column, field):
