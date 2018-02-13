@@ -77,7 +77,7 @@ function get_billing_data() {
 	local nonce=$($HASH_INSECURE <<<"$bill_bucket$bill_prefix" | head -c 12)
 	aws_cli s3 sync --exclude '*' --include '*.json' "s3://$bill_bucket/$bill_prefix" "$bill_tmp/"
 	jq -r '.reportKeys | .[]' "$bill_tmp"/*/*/*.json | \
-		sed 's/csv\.\(gz\|zip\)$/\0\x00\0/' | \
+		perl -pe 's/(csv\.(?:gz|zip))$/\1\x00\1/' | \
 		parallel \
 			--jobs 4 \
 			--colsep '\0' \
