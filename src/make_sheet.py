@@ -1,20 +1,20 @@
 #!/usr/bin/env python3
 
-import httplib2
-import os
+import collections
 import csv
 import itertools
+import json
+import os
 import pprint
 
 from apiclient import discovery
 from oauth2client import client
 from oauth2client import tools
 from oauth2client.file import Storage
-
-import collections
-import json
+import httplib2
 
 from sheets import *
+import utils
 
 try:
     import argparse
@@ -59,23 +59,12 @@ IN_INSTANCE_RESERVATION_USAGE_DIR    = 'out/instance-reservation-usage'
 IN_RESERVATION_USAGE_DIR             = 'out/reservation-usage'
 IN_ABSOLUTE_COST_PER_MONTH           = 'out/absolute.csv'
 IN_INSTANCE_SIZE_RECOMMENDATIONS_DIR = 'out/instance-size-recommendation'
+IN_INSTANCE_HISTORY                  = 'out/instance-history.csv'
 
 COLOR_RED_BG   = { 'red': 0xFF/float(0xFF), 'green': 0xCC/float(0xFF), 'blue': 0xCC/float(0xFF) }
 COLOR_RED_FG   = { 'red': 0xCC/float(0xFF), 'green': 0x00/float(0xFF), 'blue': 0x00/float(0xFF) }
 COLOR_GREEN_BG = { 'red': 0xCC/float(0xFF), 'green': 0xFF/float(0xFF), 'blue': 0xCC/float(0xFF) }
 COLOR_GREEN_FG = { 'red': 0x00/float(0xFF), 'green': 0x66/float(0xFF), 'blue': 0x00/float(0xFF) }
-
-def rows_folder(dirpath):
-    for filename in os.listdir(dirpath):
-        filepath = os.path.join(dirpath, filename)
-        with open(filepath) as f:
-            for row in rows(f):
-                yield row
-
-def rows(csvfile):
-    reader = csv.DictReader(csvfile)
-    for row in reader:
-        yield row
 
 def _with_trailing(it, trail):
     return itertools.chain(it, itertools.repeat(trail))
@@ -156,19 +145,18 @@ def reserved_summary():
             },
         }),
     )
-    records = rows_folder(IN_INSTANCE_RESERVATION_USAGE_DIR)
-    sheet = Sheet(
-        source=records,
-        fields=fields,
-        sheet_id=1,
-        fields_conditional_formats=tuple(
-            ColumnConditionalFormat(column, conditional_format)
-            for column in field_flatten(FieldRoot(fields)) if column.name == 'count_reserved'
+    with utils.csv_folder(IN_INSTANCE_RESERVATION_USAGE_DIR) as records:
+        sheet = Sheet(
+            source=records,
+            fields=fields,
+            sheet_id=1,
+            fields_conditional_formats=tuple(
+                ColumnConditionalFormat(column, conditional_format)
+                for column in field_flatten(FieldRoot(fields)) if column.name == 'count_reserved'
+            )
         )
-    )
-    sheet.properties['title'] = 'Reserved instance summary'
-    sheet_data = sheet.to_dict()
-    return sheet_data
+        sheet.properties['title'] = 'Reserved instance summary'
+        return sheet.to_dict()
 
 def _returns(value):
     def f(*args, **kwargs):
@@ -205,15 +193,14 @@ def reservation_usage_summary():
         )),
         Field(    'monthly_losses'              , 'monthly_losses'              , monthly_losses  , 'Monthly losses', NUMFORMAT_CURRENCY),
     )
-    records = rows_folder(IN_RESERVATION_USAGE_DIR)
-    sheet = Sheet(
-        source=records,
-        fields=fields,
-        sheet_id=3,
-    )
-    sheet.properties['title'] = 'Reservation usage summary'
-    sheet_data = sheet.to_dict()
-    return sheet_data
+    with utils.csv_folder(IN_RESERVATION_USAGE_DIR) as records:
+        sheet = Sheet(
+            source=records,
+            fields=fields,
+            sheet_id=3,
+        )
+        sheet.properties['title'] = 'Reservation usage summary'
+        return sheet.to_dict()
 
 def weekly_variations():
     def variation(sheet, row, column, field):
@@ -288,8 +275,44 @@ def weekly_variations():
         sheet_data = sheet.to_dict()
     return sheet_data
 
+INSTANCE_SIZES = [
+    'nano',
+    'micro',
+    'small',
+    'medium',
+    'large',
+    'xlarge',
+    '2xlarge',
+    '4xlarge',
+    '8xlarge',
+    '9xlarge',
+    '10xlarge',
+    '12xlarge',
+    '16xlarge',
+    '18xlarge',
+    '24xlarge',
+    '32xlarge',
+]
+
+def instance_history():
+    with open(IN_INSTANCE_HISTORY) as f:
+        reader = csv.DictReader(f)
+        fields = (
+            Field('date', 'date', str, 'Date', None),
+            FieldGroup('Instance count', tuple(
+                Field(instance_type, instance_type, int, instance_type, None)
+                for instance_type in reader.fieldnames[1:]
+            )),
+        )
+        sheet = Sheet(
+            source=reader,
+            fields=fields,
+            sheet_id=5
+        )
+        sheet.properties['title'] = 'Instance count history'
+        return sheet.to_dict()
+
 def instance_size_recommendations():
-    source = rows_folder(IN_INSTANCE_SIZE_RECOMMENDATIONS_DIR)
     fields = (
         FieldGroup('Instance', (
             Field('account', 'account', str, 'Account', None),
@@ -300,13 +323,14 @@ def instance_size_recommendations():
         )),
         Field('recommendation', 'recommendation', str, 'Recommended', None),
     )
-    sheet = Sheet(
-        source=source,
-        fields=fields,
-        sheet_id=4,
-    )
-    sheet.properties['title'] = 'Instance size recommendations'
-    return sheet.to_dict()
+    with utils.csv_folder(IN_INSTANCE_SIZE_RECOMMENDATIONS_DIR) as source:
+        sheet = Sheet(
+            source=source,
+            fields=fields,
+            sheet_id=4,
+        )
+        sheet.properties['title'] = 'Instance size recommendations'
+        return sheet.to_dict()
 
 def main():
     """Shows basic usage of the Sheets API.
@@ -326,6 +350,7 @@ def main():
     weekly_variations_data = weekly_variations()
     reservation_usage_summary_data = reservation_usage_summary()
     instance_size_recommendations_data = instance_size_recommendations()
+    instance_history_data = instance_history()
 
     body = {
         'properties': {
@@ -336,6 +361,7 @@ def main():
             reserved_summary_data,
             reservation_usage_summary_data,
             instance_size_recommendations_data,
+            instance_history_data,
         ],
     }
 
