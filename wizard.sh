@@ -8,6 +8,21 @@ MAX_RETRY=5
 
 DIR_BILLS='in/usagecost'
 
+for pgm in shasum sha1sum md5sum md5
+do
+	pgm_path=$(which $pgm) 2>/dev/null
+	if [[ -x "$pgm_path" ]]
+	then
+		HASH_INSECURE="$pgm_path"
+		break
+	fi
+done
+if [[ -z "$HASH_INSECURE" ]]
+then
+	echo "Could not find hash function." 1>&2
+	exit 1
+fi
+
 current_profile=default
 current_region=us-east-1
 
@@ -46,7 +61,7 @@ function set_profile() {
 	else
 		unset AWS_{ACCESS_KEY_ID,SECRET_ACCESS_KEY,SESSION_TOKEN}
 	fi
-	awsdumpenv
+	util/awsdumpenv
 }
 
 function set_region() {
@@ -59,10 +74,10 @@ function get_billing_data() {
 	read -p "Bucket name: " bill_bucket
 	read -p "Key prefix:  " bill_prefix
 	local bill_tmp=$(mktemp -d)
-	local nonce=$(sha1sum <<<"$bill_bucket$bill_prefix" | head -c 12)
+	local nonce=$($HASH_INSECURE <<<"$bill_bucket$bill_prefix" | head -c 12)
 	aws_cli s3 sync --exclude '*' --include '*.json' "s3://$bill_bucket/$bill_prefix" "$bill_tmp/"
 	jq -r '.reportKeys | .[]' "$bill_tmp"/*/*/*.json | \
-		sed -r 's/csv\.(gz|zip)$/\0\x00\0/' | \
+		sed 's/csv\.\(gz\|zip\)$/\0\x00\0/' | \
 		parallel \
 			--jobs 4 \
 			--colsep '\0' \

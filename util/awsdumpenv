@@ -1,0 +1,3 @@
+#!/bin/sh
+
+env | sed -ne '/^AWS_/s/^/export /' -e 'ta' -e 'd' -e ':a' -e 'p'
