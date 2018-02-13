@@ -121,6 +121,10 @@ function build_billing_diff() {
 	src/get_bill_diff.py
 }
 
+function build_instance_history() {
+	src/get_ec2_instance_history.py
+}
+
 function build_sheet() {
 	retry src/make_sheet.py
 }
@@ -159,6 +163,7 @@ function auto_report() {
 	get_cost_data
 	get_instance_data
 	build_billing_diff
+	build_instance_history
 	build_sheet
 }
 
@@ -173,6 +178,7 @@ function main() {
 		get_billing_data \
 		get_instance_data \
 		build_billing_diff \
+		build_instance_history \
 		build_sheet
 	do
 		if [[ -z "$action" ]]
