@@ -73,6 +73,12 @@ function get_billing_data() {
 	local bill_prefix
 	read -p "Bucket name: " bill_bucket
 	read -p "Key prefix:  " bill_prefix
+	do_get_billing_data "$bill_bucket" "$bill_prefix"
+}
+
+function do_get_billing_data() {
+	local bill_bucket="$1"
+	local bill_prefix="$2"
 	local bill_tmp=$(mktemp -d)
 	local nonce=$($HASH_INSECURE <<<"$bill_bucket$bill_prefix" | head -c 12)
 	aws_cli s3 sync --exclude '*' --include '*.json' "s3://$bill_bucket/$bill_prefix" "$bill_tmp/"
@@ -167,7 +173,7 @@ function auto_report() {
 	build_sheet
 }
 
-function main() {
+function wizard() {
 	before_action_choice
 	select action in \
 		auto_report \
@@ -190,4 +196,145 @@ function main() {
 	done
 }
 
-main
+# non-interactive actions
+nint_bill_profile=()
+nint_bill_bucket=()
+nint_bill_prefix=()
+nint_ec2_profile=()
+nint_ec2_region=()
+nint_clear_before=yes
+function parse_options() {
+	while [[ "${#@}" -gt 0 ]]
+	do
+		case "$1" in
+		--billing)
+			parse_options_billing "$@" && shift 4 || return 1
+			;;
+		--ec2)
+			parse_options_ec2 "$@"     && shift 3 || return 1
+			;;
+		--no-clear-before)
+			nint_clear_before=no
+			shift 1
+			;;
+		--no-generate-sheet)
+			nint_generate_sheet=no
+			shift 1
+			;;
+		--help)
+			print_usage
+			exit 0
+			;;
+		*)
+			1>&2 echo "unknown parameter $0"
+			return 1
+			;;
+		esac
+	done
+	return 0
+}
+
+function parse_options_ec2() {
+	if [[ "${#@}" -ge 3 ]]
+	then
+		nint_ec2_profile=("${nint_ec2_profile[@]}" "$2")
+		nint_ec2_region=("${nint_ec2_region[@]}" "$3")
+		return 0
+	else
+		return 1
+	fi
+}
+
+function parse_options_billing() {
+	if [[ "${#@}" -ge 4 ]]
+	then
+		nint_bill_profile=("${nint_bill_profile[@]}" "$2")
+		nint_bill_bucket=("${nint_bill_bucket[@]}" "$3")
+		nint_bill_prefix=("${nint_bill_prefix[@]}" "$4")
+		return 0
+	else
+		return 1
+	fi
+}
+
+function run_non_interactive() {
+	if [[ "$nint_clear_before" == "yes" ]]
+	then
+		clear_data
+	fi
+	if [[ ! -r "in/ondemandcosts.json" ]]
+	then
+		get_cost_data
+	fi
+	for i in $(seq 0 $((${#nint_bill_profile[@]} - 1)))
+	do
+		local bill_prefix="${nint_bill_prefix[i]}"
+		local bill_bucket="${nint_bill_bucket[i]}"
+		local bill_profile="${nint_bill_profile[i]}"
+		current_profile="$bill_profile"
+		do_get_billing_data "$bill_bucket" "$bill_prefix"
+	done
+	for i in $(seq 0 $((${#nint_ec2_profile[@]} - 1)))
+	do
+		local ec2_profile="${nint_ec2_profile[i]}"
+		local ec2_region="${nint_ec2_region[i]}"
+		current_profile="$ec2_profile"
+		current_region="$ec2_region"
+		get_instance_data
+	done
+	if [[ "$nint_generate_sheet" == "yes" ]]
+	then
+		build_billing_diff
+		build_instance_history
+		build_sheet
+	fi
+}
+
+function print_usage() {
+	cat 1>&2 <<EOF
+USAGE:
+wizard:  ${0} [--wizard]
+command: ${0} [--no-clear-before] [--no-generate-sheet] [--billing PROFILE
+              BUCKET PREFIX]... [-ec2 PROFILE REGION]...
+
+  --wizard           Run interactively
+
+  --no-clear-before    Do not clear all data before doing anything. Useful when
+                       a previous invocation failed or when you add data
+                       incrementally before generating the sheet.
+  --no-generate-sheet  Do not generate a Google Sheet after all data was
+                       retrieved.
+  --billing            Get billing data from s3:/BUCKET/PREFIX using PROFILE.
+  --ec2                Get EC2 data for region REGION using PROFILE.
+
+BILLING PREFIX:
+  This tool uses AWS's new Cost And Usage Report format for billing data. The
+  following structure is expected in S3:
+
+    PREFIX
+    \`- arbitraryReportName
+       |- 20171001-20171101
+       |  |- arbitraryReportName-Manifest.json
+       |  |- bbe82960-6a1a-47fd-ae59-1e666e2f674a
+       |  |  |- arbitraryReportName-Manifest.json
+       |  |  |- arbitraryReportName-1.csv.gz
+       |  |  \`- ...
+       |  \`- ...
+       \`- ...
+  
+  You can get more information about this at 
+  https://docs.aws.amazon.com/awsaccountbilling/latest/aboutv2/billing-reports-costusage.html
+EOF
+}
+
+function main() {
+	if [[ "${#@}" == 0 || "$1" == "--wizard" ]]
+	then
+		wizard
+	else
+		parse_options "$@" || ( print_usage; exit 1 )
+		run_non_interactive
+	fi
+}
+
+main "$@"
