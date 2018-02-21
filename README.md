@@ -1,5 +1,11 @@
 # Cost report generator
 
+## Requirements
+
+- Install [jq](https://stedolan.github.io/jq/download/)
+- Install [parallel](https://github.com/flesler/parallel)
+- Install the python3 dependencies: `sudo pip3 install -r requirements.txt`
+
 ## Google Sheets API access
 
 Follow the instructions at
@@ -9,7 +15,7 @@ and API access.
 ## How to use the wizard
 
 In order to support getting data from multiple sources (accounts or regions),
-this tool provides a rudimentary interactive wizard : `wizard.sh`. When you run
+this tool provides a rudimentary interactive wizard : `run.sh`. When you run
 it, you should see the following:
 
 ```
