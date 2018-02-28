@@ -26,7 +26,7 @@ fi
 current_profile=default
 current_region=us-east-1
 
-mkdir -p in/{usagecost}
+mkdir -p in/usagecost
 mkdir -p out/{instance-,}reservation-usage
 mkdir -p out/instance-size-recommendation
 

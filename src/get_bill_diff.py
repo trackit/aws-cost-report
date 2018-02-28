@@ -50,7 +50,22 @@ for row in rows_folder(DIR_USAGECOST):
     first_month = month if first_month == -1 else min(month, first_month)
     last_month = month if last_month == -1 else max(month, last_month)
     usagetype = row['lineItem/UsageType']
-    breakdown[(month, usagetype)] += float(row['lineItem/UnblendedCost'])
+    try:
+        breakdown[(month, usagetype)] += float(row['lineItem/UnblendedCost'])# if row['lineItem/UnblendedCost'] else 0.0
+    except:
+        print(row, file=sys.stderr)
+        print(month, file=sys.stderr)
+        print(usagetype, file=sys.stderr)
+
+all_months = sorted(set(k[0] for k in breakdown.keys()))
+preserved_months = all_months[-12:]
+first_month = preserved_months[0]
+last_month = preserved_months[-1]
+breakdown = {
+    (month, usagetype): value
+    for (month, usagetype), value in breakdown.items()
+    if month in preserved_months
+}
 
 with open(OUT_MONTHS, 'w') as monthsfile:
     writer = csv.writer(monthsfile)

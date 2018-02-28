@@ -44,10 +44,13 @@ compute_sheet_tenancy = {
 }
 
 compute_sheet_platform = {
-    'Linux/UNIX' : 'Linux',
-    'Windows'    : 'Windows',
-    'RHEL'       : 'RHEL',
-    'SUSE'       : 'SUSE',
+    'Linux/UNIX'              : 'Linux',
+    'Linux/UNIX (Amazon VPC)' : 'Linux',
+    'Windows'                 : 'Windows',
+    'windows'                 : 'Windows',
+    'RHEL'                    : 'RHEL',
+    'SUSE'                    : 'SUSE',
+    'SUSE Linux (Amazon VPC)' : 'SUSE',
 }
 
 DIR_BILLS                      = 'in/usagecost'
@@ -150,8 +153,12 @@ def get_ec2_type_offerings(ec2, instance_type):
         )
     )
     offerings = sorted(offerings, key=reserved_instance_offering_cost_per_hour)
-    offering_best = offerings[0]
-    offering_worst = offerings[-1]
+    try:
+        offering_best = offerings[0]
+        offering_worst = offerings[-1]
+    except IndexError:
+        print('found no offerings for {}'.format(instance_type), file=sys.stderr)
+        return None
     ondemand = next(
         c
         for c in compute_instance_costs
@@ -172,7 +179,8 @@ def get_ec2_type_offerings(ec2, instance_type):
     return res
 
 def get_instance_offerings(ec2, instance_types):
-    return [get_ec2_type_offerings(ec2, ityp) for ityp in instance_types]
+    offerings = (get_ec2_type_offerings(ec2, ityp) for ityp in instance_types)
+    return [o for o in offerings if o]
 
 def instance_type_matches(pattern, example):
     return pattern.type == example or pattern.type == example._replace(availability_zone=az_to_region(example.availability_zone))
@@ -201,13 +209,16 @@ def get_instance_matchings(instance_offerings, reserved_instances, ondemand_inst
             use = min(ri[1], oi[1] - reserved)
             ri[1] -= use
             reserved += use
-        matches.append(
-            InstanceMatching(
-                offering       = next(io for io in instance_offerings if io.type == oi[0]),
-                count          = oi[1],
-                count_reserved = reserved,
+        try:
+            matches.append(
+                InstanceMatching(
+                    offering       = next(io for io in instance_offerings if io.type == oi[0]),
+                    count          = oi[1],
+                    count_reserved = reserved,
+                )
             )
-        )
+        except StopIteration:
+            print("no match for {}".format(oi[0]), file=sys.stderr)
     reservations_usage = [
         (ri, ri.count - remaining)
         for [ri, remaining] in remaining_reserved_instances

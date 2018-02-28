@@ -24,7 +24,7 @@ with utils.csv_folder(USAGECOST_DIR) as records:
         if USAGE in record['lineItem/UsageType']
     )
     simplified_lineitems = (
-        (record['product/instanceType'], round(float(record['lineItem/UsageAmount'])), record['lineItem/UsageStartDate'])
+        (record['product/instanceType'], round(float(record['lineItem/UsageAmount'])) if record['lineItem/UsageAmount'] else 0, record['lineItem/UsageStartDate'][:10])
         for record in box_usage_records
     )
 
