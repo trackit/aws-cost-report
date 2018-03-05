@@ -3,7 +3,7 @@
 ## Requirements
 
 - Install [jq](https://stedolan.github.io/jq/download/)
-- Install [parallel](https://github.com/flesler/parallel)
+- Install [parallel](https://www.gnu.org/software/parallel/)
 - Install the python3 dependencies: `sudo pip3 install -r requirements.txt`
 
 ## Google Sheets API access
