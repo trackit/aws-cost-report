@@ -203,6 +203,7 @@ nint_bill_prefix=()
 nint_ec2_profile=()
 nint_ec2_region=()
 nint_clear_before=yes
+nint_generate_sheet=yes
 function parse_options() {
 	while [[ "${#@}" -gt 0 ]]
 	do
@@ -321,8 +322,8 @@ BILLING PREFIX:
        |  |  \`- ...
        |  \`- ...
        \`- ...
-  
-  You can get more information about this at 
+
+  You can get more information about this at
   https://docs.aws.amazon.com/awsaccountbilling/latest/aboutv2/billing-reports-costusage.html
 EOF
 }
