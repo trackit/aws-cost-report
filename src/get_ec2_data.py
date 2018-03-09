@@ -67,7 +67,6 @@ with open(FIL_ONDEMAND_COSTS) as f:
 _az_to_region_re = re.compile(r'^(.+?)[a-z]?$')
 def az_to_region(az):
     return _az_to_region_re.match(az).group(1)
-    
 
 def identity(x):
     return x
@@ -83,7 +82,16 @@ def bucketize(it, key, op=lambda a, b: a.push(b), zero=list):
     return acc
 
 def get_reserved_instances(ec2, region):
-    reserved_instances_data = ec2.describe_reserved_instances()
+    reserved_instances_data = ec2.describe_reserved_instances(
+        Filters=[
+            {
+                'Name': 'state',
+                'Values': [
+                    'active',
+                ]
+            },
+        ],
+    )
     return [
         InstanceReservation(
             type = InstanceType(
@@ -91,6 +99,7 @@ def get_reserved_instances(ec2, region):
                 availability_zone = ri['AvailabilityZone'] if ri['Scope'] == 'Availability Zone' else region,
                 tenancy           = ri['InstanceTenancy'],
                 product           = ri['ProductDescription'],
+                vpc               = ri['ProductDescription'].endswith("(Amazon VPC)"),
             ),
             cost_hourly       = sum(rc['Amount'] for rc in ri['RecurringCharges']),
             cost_upfront      = ri['FixedPrice'],
@@ -122,7 +131,7 @@ def get_ondemand_instance_types(ec2):
     reservations = itertools.chain.from_iterable(p['Reservations'] for p in pages)
     instances = itertools.chain.from_iterable(r['Instances'] for r in reservations)
     instances = (
-        InstanceType(i['InstanceType'], i['Placement']['AvailabilityZone'], i['Placement']['Tenancy'], i.get('Platform', 'Linux/UNIX'))
+        InstanceType(i['InstanceType'], i['Placement']['AvailabilityZone'], i['Placement']['Tenancy'], i.get('Platform', 'Linux/UNIX'), i['VpcId'] != '')
         for i in instances
         if i.get('InstanceLifecycle', 'ondemand') == 'ondemand'
     )
@@ -183,7 +192,14 @@ def get_instance_offerings(ec2, instance_types):
     return [o for o in offerings if o]
 
 def instance_type_matches(pattern, example):
-    return pattern.type == example or pattern.type == example._replace(availability_zone=az_to_region(example.availability_zone))
+    if example.vpc == True:
+        return (pattern.type == example or pattern.type == example._replace(vpc=False) or
+        pattern.type == example._replace(vpc=False, availability_zone=az_to_region(example.availability_zone)) or
+        pattern.type == example._replace(availability_zone=az_to_region(example.availability_zone)) or
+        pattern.type == example._replace(product=example.product+' (Amazon VPC)') or
+        pattern.type == example._replace(availability_zone=az_to_region(example.availability_zone), product=example.product+' (Amazon VPC)'))
+    else:
+        return (pattern.type == example or pattern.type == example._replace(availability_zone=az_to_region(example.availability_zone)))
 
 def get_instance_matchings(instance_offerings, reserved_instances, ondemand_instances):
     remaining_reserved_instances = [
@@ -212,7 +228,7 @@ def get_instance_matchings(instance_offerings, reserved_instances, ondemand_inst
         try:
             matches.append(
                 InstanceMatching(
-                    offering       = next(io for io in instance_offerings if io.type == oi[0]),
+                    offering       = next(io for io in instance_offerings if (io.type == oi[0] or io.type == oi[0]._replace(product=oi[0].product+' (Amazon VPC)'))),
                     count          = oi[1],
                     count_reserved = reserved,
                 )
@@ -227,7 +243,6 @@ def get_instance_matchings(instance_offerings, reserved_instances, ondemand_inst
     pp.pprint(reservations_usage)
     return matches, reservations_usage
 
-        
 
 def get_ec2_reservation_data(ec2, region):
     print("Getting reserved instances...")

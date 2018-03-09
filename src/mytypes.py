@@ -7,6 +7,7 @@ InstanceType = collections.namedtuple(
         'availability_zone',
         'tenancy',
         'product',
+        'vpc'
     ]
 )
 
