@@ -295,7 +295,7 @@ function print_usage() {
 USAGE:
 wizard:  ${0} [--wizard]
 command: ${0} [--no-clear-before] [--no-generate-sheet] [--billing PROFILE
-              BUCKET PREFIX]... [-ec2 PROFILE REGION]...
+              BUCKET PREFIX]... [--ec2 PROFILE REGION]...
 
   --wizard           Run interactively
 
@@ -321,8 +321,8 @@ BILLING PREFIX:
        |  |  \`- ...
        |  \`- ...
        \`- ...
-  
-  You can get more information about this at 
+
+  You can get more information about this at
   https://docs.aws.amazon.com/awsaccountbilling/latest/aboutv2/billing-reports-costusage.html
 EOF
 }
