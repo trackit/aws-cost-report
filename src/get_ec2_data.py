@@ -44,13 +44,28 @@ compute_sheet_tenancy = {
 }
 
 compute_sheet_platform = {
-    'Linux/UNIX'              : 'Linux',
-    'Linux/UNIX (Amazon VPC)' : 'Linux',
-    'Windows'                 : 'Windows',
-    'windows'                 : 'Windows',
-    'RHEL'                    : 'RHEL',
-    'SUSE'                    : 'SUSE',
-    'SUSE Linux (Amazon VPC)' : 'SUSE',
+    'Linux/UNIX'                                        : 'Linux',
+    'Linux/UNIX (Amazon VPC)'                           : 'Linux',
+    'SUSE Linux'                                        : 'SUSE',
+    'SUSE Linux (Amazon VPC)'                           : 'SUSE',
+    'Red Hat Enterprise Linux'                          : 'RHEL',
+    'Red Hat Enterprise Linux (Amazon VPC)'             : 'RHEL',
+    'Windows'                                           : 'Windows',
+    'windows'                                           : 'Windows',
+    'Windows (Amazon VPC)'                              : 'Windows',
+    'windows (Amazon VPC)'                              : 'Windows',
+    'Windows with SQL Server Standard'                  : 'Windows',
+    'windows with SQL Server Standard'                  : 'Windows',
+    'Windows with SQL Server Standard (Amazon VPC)'     : 'Windows',
+    'windows with SQL Server Standard (Amazon VPC)'     : 'Windows',
+    'Windows with SQL Server Web'                       : 'Windows',
+    'windows with SQL Server Web'                       : 'Windows',
+    'Windows with SQL Server Web (Amazon VPC)'          : 'Windows',
+    'windows with SQL Server Web (Amazon VPC)'          : 'Windows',
+    'Windows with SQL Server Enterprise'                : 'Windows',
+    'windows with SQL Server Enterprise'                : 'Windows',
+    'Windows with SQL Server Enterprise (Amazon VPC)'   : 'Windows',
+    'windows with SQL Server Enterprise (Amazon VPC)'   : 'Windows',
 }
 
 DIR_BILLS                      = 'in/usagecost'
