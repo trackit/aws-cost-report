@@ -50,6 +50,9 @@ for row in rows_folder(DIR_USAGECOST):
     first_month = month if first_month == -1 else min(month, first_month)
     last_month = month if last_month == -1 else max(month, last_month)
     usagetype = row['lineItem/UsageType']
+    # do not process if it is a line item for AWS support
+    if row['lineItem/ProductCode'] == 'AWSSupportBusiness':
+        continue
     try:
         breakdown[(month, usagetype)] += float(row['lineItem/UnblendedCost'])# if row['lineItem/UnblendedCost'] else 0.0
     except:
