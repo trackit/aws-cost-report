@@ -75,7 +75,7 @@ def parse_args():
         metavar=("PROFILE", "REGION"),
         default=[],
     )
-    return parser.parse_args()
+    return parser.parse_args(), parser
 
 
 def try_mkdir(path):
@@ -115,7 +115,7 @@ def do_get_billing_data(profile, bucket, prefix):
 
     nonce = hashlib.sha1("{}{}".format(bucket, prefix).encode()).hexdigest()[:12]
     it = 1
-    concurrent_available = 6
+    concurrent_available = 4
     concurrent_available_mutex = threading.Lock()
     thread = []
 
@@ -144,37 +144,48 @@ def do_get_billing_data(profile, bucket, prefix):
         for report_key in report_keys:
             obj = s3_client.get_object(Bucket=bucket, Key=report_key)
             file_name = "in/usagecost/{}.{}.csv.{}".format(nonce, it, report_key.split(".")[-1])
+            if concurrent_available <= 0:
+                print("    Waiting to download {}...".format(report_key))
             while concurrent_available <= 0:
                 time.sleep(0.1)
             t = threading.Thread(name=report_key, target=save_to_file, args=(obj["Body"], file_name, report_key))
+            print("    Downloading {}...".format(report_key))
             t.start()
             change_concurrent_available(-1)
             thread.append(t)
             it += 1
 
     def analyze_obj(s3_client, objs):
+        total = len(objs)
+        current = 1
         for obj in objs:
-            if obj["Key"].endswith(".json") and obj["Key"].startswith(prefix+"/"):
-                content = s3_client.get_object(Bucket=bucket, Key=obj["Key"])["Body"].read().decode("utf-8")
-                content_json = json.loads(content)
-                analyze_report(s3_client, content_json["bucket"], content_json["reportKeys"])
+            print("  Getting bill files from {} ({}/{})...".format(obj["Key"], current, total))
+            content = s3_client.get_object(Bucket=bucket, Key=obj["Key"])["Body"].read().decode("utf-8")
+            content_json = json.loads(content)
+            analyze_report(s3_client, content_json["bucket"], content_json["reportKeys"])
+            current += 1
         for t in thread:
             t.join()
 
     def unzip_obj():
         for file_name in os.listdir("in/usagecost"):
-            if file_name.startswith(nonce) and file_name.endswith(".zip"):
-                with zipfile.ZipFile(os.path.join("in/usagecost", file_name), "r") as z:
-                    z.extractall("in/usagecost")
-            elif file_name.startswith(nonce) and file_name.endswith(".gz"):
-                with gzip.GzipFile(os.path.join("in/usagecost", file_name), "r") as z:
-                    with open(os.path.join("in/usagecost", file_name[:-3]), "wb+") as f:
-                        shutil.copyfileobj(z, f)
+            try:
+                print("Extracting {}...".format(file_name))
+                if file_name.startswith(nonce) and file_name.endswith(".zip"):
+                    with zipfile.ZipFile(os.path.join("in/usagecost", file_name), "r") as z:
+                        z.extractall("in/usagecost")
+                elif file_name.startswith(nonce) and file_name.endswith(".gz"):
+                    with gzip.GzipFile(os.path.join("in/usagecost", file_name), "r") as z:
+                        with open(os.path.join("in/usagecost", file_name[:-3]), "wb+") as f:
+                            shutil.copyfileobj(z, f)
+            except Exception as e:
+                print("Failed to extract {}: {}".format(file_name, e))
 
     try:
         session = boto3.Session(profile_name=profile)
         s3_client = session.client("s3")
         objs = s3_client.list_objects(Bucket=bucket)["Contents"]
+        objs = [obj for obj in objs if obj["Key"].endswith(".json") and obj["Key"].startswith(prefix+"/")]
     except Exception as e:
         exit(e)
     analyze_obj(s3_client, objs)
@@ -208,13 +219,15 @@ def main():
     global current_profile
     global current_region
 
-    args = parse_args()
-    print(args)
+    args, parser = parse_args()
+    if len(args.billing) == 0 and len(args.ec2) == 0:
+        return parser.print_help()
     if args.clear_before:
         clear_data()
     if not os.path.isfile("in/ondemandcosts.json"):
         os.system("src/get_ec2_costs.sh")
     for bill in args.billing:
+        print("Download billings for {}...".format(bill[0]))
         current_profile = bill[0]
         do_get_billing_data(*bill)
     for ec in args.ec2:
