@@ -127,10 +127,9 @@ def do_get_billing_data(profile, bucket, prefix):
         concurrent_available += value
         concurrent_available_mutex.release()
 
-    def save_to_file(stream, file_name, report_key):
+    def save_to_file(s3_client, bucket, file_name, report_key):
         try:
-            with open(file_name, "wb+") as f:
-                shutil.copyfileobj(stream, f)
+            s3_client.download_file(Bucket=bucket, Key=report_key, Filename=file_name)
         except Exception as e:
             print(e)
         finally:
@@ -142,13 +141,12 @@ def do_get_billing_data(profile, bucket, prefix):
         nonlocal concurrent_available
 
         for report_key in report_keys:
-            obj = s3_client.get_object(Bucket=bucket, Key=report_key)
-            file_name = "in/usagecost/{}.{}.csv.{}".format(nonce, it, report_key.split(".")[-1])
             if concurrent_available <= 0:
                 print("    Waiting to download {}...".format(report_key))
             while concurrent_available <= 0:
                 time.sleep(0.1)
-            t = threading.Thread(name=report_key, target=save_to_file, args=(obj["Body"], file_name, report_key))
+            file_name = "in/usagecost/{}.{}.csv.{}".format(nonce, it, report_key.split(".")[-1])
+            t = threading.Thread(name=report_key, target=save_to_file, args=(s3_client, bucket, file_name, report_key))
             print("    Downloading {}...".format(report_key))
             t.start()
             change_concurrent_available(-1)
