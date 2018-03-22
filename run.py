@@ -184,8 +184,8 @@ def do_get_billing_data(profile, bucket, prefix):
     try:
         session = boto3.Session(profile_name=profile)
         s3_client = session.client("s3")
-        objs = s3_client.list_objects(Bucket=bucket)["Contents"]
-        objs = [obj for obj in objs if obj["Key"].endswith(".json") and obj["Key"].startswith(prefix+"/")]
+        objs = s3_client.list_objects(Bucket=bucket, Prefix=prefix)["Contents"]
+        objs = [obj for obj in objs if obj["Key"].endswith(".json") and len(obj["Key"].split('/', 1)[-1].split('/')) == 3]
     except Exception as e:
         exit(e)
     analyze_obj(s3_client, objs)
