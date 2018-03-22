@@ -104,7 +104,7 @@ def build_billing_diff():
 
 
 def build_instance_history():
-    os.system("src/get_bill_diff.py")
+    os.system("src/get_ec2_instance_history.py")
 
 
 def build_sheet():
