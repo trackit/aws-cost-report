@@ -178,6 +178,8 @@ def do_get_billing_data(profile, bucket, prefix):
                             shutil.copyfileobj(z, f)
             except Exception as e:
                 print("Failed to extract {}: {}".format(file_name, e))
+            finally:
+                os.remove(os.path.join("in/usagecost", file_name))
 
     try:
         session = boto3.Session(profile_name=profile)
@@ -188,7 +190,6 @@ def do_get_billing_data(profile, bucket, prefix):
         exit(e)
     analyze_obj(s3_client, objs)
     unzip_obj()
-    pass
 
 
 def do_get_instance_data(profile, region):
@@ -218,8 +219,8 @@ def main():
     global current_region
 
     args, parser = parse_args()
-    if len(args.billing) == 0 and len(args.ec2) == 0:
-        return parser.print_help()
+    # if len(args.billing) == 0 and len(args.ec2) == 0:
+    #     return parser.print_help()
     if args.clear_before:
         clear_data()
     if not os.path.isfile("in/ondemandcosts.json"):
