@@ -182,7 +182,10 @@ def do_get_billing_data(profile, bucket, prefix):
                 os.remove(os.path.join("in/usagecost", file_name))
 
     try:
-        session = boto3.Session(profile_name=profile)
+        if profile != 'env':
+            session = boto3.Session(profile_name=profile)
+        else:
+            session = boto3.Session()
         s3_client = session.client("s3")
         objs = s3_client.list_objects(Bucket=bucket, Prefix=prefix)["Contents"]
         objs = [obj for obj in objs if obj["Key"].endswith(".json") and len(obj["Key"].split('/', 1)[-1].split('/')) == 3]
