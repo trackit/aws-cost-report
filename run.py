@@ -53,11 +53,18 @@ def parse_args():
         default=True,
     )
     parser.add_argument(
-        "--no-generate-sheet",
-        help="Do not generate a Google Sheet after all data was retrieved.",
-        dest="generate_sheet",
+        "--no-generate-xlsx",
+        help="Do not generate a XLSX file after all data was retrieved.",
+        dest="generate_xslx",
         action="store_false",
         default=True,
+    )
+    parser.add_argument(
+        "--generate-gsheet",
+        help="Generate a Google Sheet after all data was retrieved.",
+        dest="generate_gsheet",
+        action="store_true",
+        default=False,
     )
     parser.add_argument(
         "--billing",
@@ -107,8 +114,12 @@ def build_instance_history():
     os.system("src/get_ec2_instance_history.py")
 
 
-def build_sheet():
-    os.system("src/make_sheet.py")
+def build_gsheet():
+    os.system("src/make_gsheet.py")
+
+
+def build_xlsx():
+    os.system("src/make_xlsx.py")
 
 
 def do_get_billing_data(profile, bucket, prefix):
@@ -236,10 +247,13 @@ def main():
         current_profile = ec[0]
         current_region = ec[1]
         do_get_instance_data(*ec)
-    if args.generate_sheet:
+    if args.generate_gsheet or args.generate_xslx:
         build_billing_diff()
         build_instance_history()
-        build_sheet()
+        if args.generate_gsheet:
+            build_gsheet()
+        if args.generate_xslx:
+            build_xlsx()
 
 
 if __name__ == "__main__":
