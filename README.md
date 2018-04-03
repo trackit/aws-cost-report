@@ -17,11 +17,11 @@ and API access.
 # Print help and usage informations
 $> ./run.py --help
 
-# Run with one billing bucket and one EC2 region
-$> ./run.py --billing profile_name billing-bucket-name prefix --ec2 profile_name region
+# Run with one billing bucket and one EC2 profile
+$> ./run.py --billing profile_name billing-bucket-name prefix --ec2 profile_name
 
-# Run with multiple billing buckets and EC2 regions
-$> ./run.py --billing profile_name billing-bucket-name prefix --billing profile_name2 billing-bucket-name2 prefix2 --ec2 profile_name region --ec2 profile_name2 region2
+# Run with multiple billing buckets and EC2 profiles
+$> ./run.py --billing profile_name billing-bucket-name prefix --billing profile_name2 billing-bucket-name2 prefix2 --ec2 profile_name --ec2 profile_name2
 ```
 
 The tool is built to use AWS credentials stored in `~/.aws/credentials`.
@@ -49,9 +49,9 @@ $> docker build -t msolution/aws-cost-report .
 ### Use the docker container
 
 ```
-# Run with one billing bucket and one EC2 region, using env credentials
-$> docker run -v /local/path/out:/root/aws-cost-report/out -e AWS_ACCESS_KEY_ID=accesskeyid -e AWS_SECRET_ACCESS_KEY=secretaccesskey -e AWS_DEFAULT_REGION=default-region -e AWS_SESSION_TOKEN=sessiontoken(optional) msolution/aws-cost-report --no-generate-sheet --billing env billing-bucket-name prefix --ec2 env region
+# Run with one billing bucket and one EC2 profile, using env credentials
+$> docker run -v /local/path/out:/root/aws-cost-report/out -e AWS_ACCESS_KEY_ID=accesskeyid -e AWS_SECRET_ACCESS_KEY=secretaccesskey -e AWS_DEFAULT_REGION=default-region -e AWS_SESSION_TOKEN=sessiontoken(optional) msolution/aws-cost-report --no-generate-sheet --billing env billing-bucket-name prefix --ec2 env
 
-# Run with multiple billing buckets and EC2 regions, using your local aws credentials
-$> docker run -v /path/to/credentials:/root/.aws:ro -v /local/path/out:/root/aws-cost-report/out msolution/aws-cost-report --no-generate-sheet --billing profile_name billing-bucket-name prefix --billing profile_name2 billing-bucket-name2 prefix2 --ec2 profile_name region --ec2 profile_name2 region2
+# Run with multiple billing buckets and EC2 profiles, using your local aws credentials
+$> docker run -v /path/to/credentials:/root/.aws:ro -v /local/path/out:/root/aws-cost-report/out msolution/aws-cost-report --no-generate-sheet --billing profile_name billing-bucket-name prefix --billing profile_name2 billing-bucket-name2 prefix2 --ec2 profile_name --ec2 profile_name2
 ```

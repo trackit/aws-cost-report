@@ -188,7 +188,7 @@ def get_ec2_type_offerings(ec2, instance_type):
         for c in compute_instance_costs
         if (
             c['attributes']['instanceType'] == instance_type.size
-            and c['attributes']['location'] == compute_sheet_region[az_to_region(instance_type.availability_zone)]
+            and c['attributes']['location'] == compute_sheet_region.get(az_to_region(instance_type.availability_zone), az_to_region(instance_type.availability_zone))
             and c['attributes']['tenancy'] == compute_sheet_tenancy[instance_type.tenancy]
             and c['attributes']['operatingSystem'] == compute_sheet_platform[instance_type.product]
         )
