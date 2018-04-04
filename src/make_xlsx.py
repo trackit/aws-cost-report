@@ -294,7 +294,7 @@ def instance_size_recommendations(workbook, header_format, val_format):
 
 
 def main():
-    workbook = xlsxwriter.Workbook('sheet.xlsx')
+    workbook = xlsxwriter.Workbook('./out/sheet.xlsx')
 
     header_format = workbook.add_format()
     header_format.set_bold()

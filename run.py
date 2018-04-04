@@ -76,10 +76,10 @@ def parse_args():
     )
     parser.add_argument(
         "--ec2",
-        help="Get EC2 data for region REGION using PROFILE.",
+        help="Get EC2 data for PROFILE.",
         action="append",
-        nargs=2,
-        metavar=("PROFILE", "REGION"),
+        nargs=1,
+        metavar="PROFILE",
         default=[],
     )
     return parser.parse_args(), parser
@@ -99,8 +99,7 @@ try_mkdir("out/reservation-usage")
 try_mkdir("out/instance-reservation-usage")
 try_mkdir("out/instance-size-recommendation")
 
-current_profile = "default"
-current_region = "us-east-1"
+default_region = "us-east-1"
 
 def awsenv(profile, region):
     return "util/awsenv --profile {} --region {}".format(profile, region)
@@ -121,6 +120,12 @@ def build_gsheet():
 def build_xlsx():
     os.system("src/make_xlsx.py")
 
+def get_session(profile):
+    if profile != 'env':
+        session = boto3.Session(profile_name=profile)
+    else:
+        session = boto3.Session()
+    return session
 
 def do_get_billing_data(profile, bucket, prefix):
 
@@ -193,10 +198,7 @@ def do_get_billing_data(profile, bucket, prefix):
                 os.remove(os.path.join("in/usagecost", file_name))
 
     try:
-        if profile != 'env':
-            session = boto3.Session(profile_name=profile)
-        else:
-            session = boto3.Session()
+        session = get_session(profile)
         s3_client = session.client("s3")
         objs = s3_client.list_objects(Bucket=bucket, Prefix=prefix)["Contents"]
         objs = [obj for obj in objs if obj["Key"].endswith(".json") and len(obj["Key"].split('/', 1)[-1].split('/')) == 3]
@@ -227,11 +229,16 @@ def clear_data():
         if not os.path.isdir(f) or (os.path.isdir(f) and f != "in/persistent"):
             recursivly_remove_file(f)
 
+def get_regions(session):
+    client_region = session.region_name or default_region
+    client = session.client('ec2', region_name=client_region)
+    regions = client.describe_regions()
+    return [
+        region['RegionName']
+        for region in regions['Regions']
+    ]
 
 def main():
-    global current_profile
-    global current_region
-
     args, parser = parse_args()
     # if len(args.billing) == 0 and len(args.ec2) == 0:
     #     return parser.print_help()
@@ -241,12 +248,12 @@ def main():
         os.system("src/get_ec2_costs.sh")
     for bill in args.billing:
         print("Download billings for {}...".format(bill[0]))
-        current_profile = bill[0]
         do_get_billing_data(*bill)
     for ec in args.ec2:
-        current_profile = ec[0]
-        current_region = ec[1]
-        do_get_instance_data(*ec)
+        session = get_session(ec[0])
+        regions = get_regions(session)
+        for region in regions:
+            do_get_instance_data(ec[0], region)
     if args.generate_gsheet or args.generate_xslx:
         build_billing_diff()
         build_instance_history()
