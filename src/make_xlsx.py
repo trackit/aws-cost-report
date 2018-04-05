@@ -345,10 +345,7 @@ def gen_introduction(workbook, header_format, val_format):
 
 
 def main(name):
-    name = name + "_" if len(name) > 0 else name
-    now = datetime.datetime.now()
-    month = "{}{}".format("0" if now.month < 10 else "", now.month)
-    workbook = xlsxwriter.Workbook('./out/trackit_{}aws_cost_report_{}-{}-01.xlsx'.format(name, now.year, month))
+    workbook = xlsxwriter.Workbook('./out/{}.xlsx'.format(name))
 
     header_format = workbook.add_format()
     header_format.set_bold()
@@ -374,5 +371,6 @@ def main(name):
 
 if __name__ == '__main__':
     print("Generating xlsx file.")
-    main(sys.argv[1] if len(sys.argv) > 1 else "")
-    print("sheet.xlsx generated!")
+    name = sys.argv[1] if len(sys.argv) > 1 else "sheet"
+    main(name)
+    print("{}.xlsx generated!".format(name))
