@@ -4,9 +4,11 @@ import collections
 import csv
 import itertools
 import json
+import datetime
 import os
 import pprint
 import xlsxwriter
+import sys
 
 from sheets import *
 import utils
@@ -342,8 +344,11 @@ def gen_introduction(workbook, header_format, val_format):
     worksheet.insert_image("A1", "src/ressources/introduction.png")
 
 
-def main():
-    workbook = xlsxwriter.Workbook('./out/sheet.xlsx')
+def main(name):
+    name = name + "_" if len(name) > 0 else name
+    now = datetime.datetime.now()
+    month = "{}{}".format("0" if now.month < 10 else "", now.month)
+    workbook = xlsxwriter.Workbook('./out/trackit_{}aws_cost_report_{}-{}-01.xlsx'.format(name, now.year, month))
 
     header_format = workbook.add_format()
     header_format.set_bold()
@@ -369,5 +374,5 @@ def main():
 
 if __name__ == '__main__':
     print("Generating xlsx file.")
-    main()
+    main(sys.argv[1] if len(sys.argv) > 1 else "")
     print("sheet.xlsx generated!")
