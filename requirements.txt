@@ -1,3 +1,4 @@
 google-api-python-client==1.6.5
 boto3==1.6.3
 awscli==1.14.59
+xlsxwriter==1.0.2
