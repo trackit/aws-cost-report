@@ -50,7 +50,7 @@ def _with_trailing(it, trail):
     return itertools.chain(it, itertools.repeat(trail))
 
 
-def reserved_summary(workbook, header_format, val_format):
+def gen_reserved_summary(workbook, header_format, val_format):
     with utils.csv_folder(IN_INSTANCE_RESERVATION_USAGE_DIR) as records:
         worksheet = workbook.add_worksheet("Reserved instance summary")
 
@@ -124,7 +124,7 @@ def reserved_summary(workbook, header_format, val_format):
             })
 
 
-def reservation_usage_summary(workbook, header_format, val_format):
+def gen_reservation_usage_summary(workbook, header_format, val_format):
     with utils.csv_folder(IN_RESERVATION_USAGE_DIR) as records:
         worksheet = workbook.add_worksheet("Reservation usage summary")
 
@@ -173,7 +173,7 @@ def reservation_usage_summary(workbook, header_format, val_format):
             )
 
 
-def weekly_variations(workbook, header_format, val_format):
+def gen_weekly_variations(workbook, header_format, val_format):
     def to_alpha(x): return chr(ord('A') + x)
 
     with open(IN_ABSOLUTE_COST_PER_MONTH) as f:
@@ -215,7 +215,6 @@ def weekly_variations(workbook, header_format, val_format):
         date_fieldnames = reader.fieldnames[1:-1]
         if len(date_fieldnames) > 6:
             date_fieldnames = date_fieldnames[-5:]
-        print(date_fieldnames)
         refs = {
             header: [i, True, float]
             for i, header in zip(itertools.count(3, 2), date_fieldnames[1:])
@@ -264,7 +263,7 @@ def weekly_variations(workbook, header_format, val_format):
                 i+1), sum([float(line[o]) for o in reader.fieldnames[1:]]), cur_format)
 
 
-def instance_history(workbook, header_format, val_format):
+def gen_instance_count_history(workbook, header_format, val_format):
     with open(IN_INSTANCE_HISTORY) as f:
         reader = csv.DictReader(f)
         worksheet = workbook.add_worksheet("Instance count history")
@@ -296,7 +295,25 @@ def instance_history(workbook, header_format, val_format):
                 worksheet.write(i, refs[h][0], refs[h][1](v), val_format)
 
 
-def instance_size_recommendations(workbook, header_format, val_format):
+def gen_instance_count_history_chart(workbook, header_format, val_format):
+    with open(IN_INSTANCE_HISTORY) as f:
+        reader = csv.DictReader(f)
+
+        chart = workbook.add_chart({
+            "type": "line"
+        })
+        row_len = len(list(reader))
+        for i, fieldname in zip(itertools.count(1), reader.fieldnames[1:]):
+            chart.add_series({
+                "values": ["Instance count history", 2, i, row_len-1, i],
+                "categories": ["Instance count history", 2, 0, row_len-1, 0],
+                "name": fieldname,
+            })
+        chartsheet = workbook.add_chartsheet("Instance count history chart")
+        chartsheet.set_chart(chart)
+
+
+def gen_instance_size_recommendations(workbook, header_format, val_format):
     with utils.csv_folder(IN_INSTANCE_SIZE_RECOMMENDATIONS_DIR) as source:
         worksheet = workbook.add_worksheet("Instance size recommendations")
 
@@ -319,6 +336,12 @@ def instance_size_recommendations(workbook, header_format, val_format):
                     worksheet.write(i, refs[h][0], v, val_format)
 
 
+def gen_introduction(workbook, header_format, val_format):
+    worksheet = workbook.add_worksheet("Introduction")
+
+    worksheet.insert_image("A1", "src/ressources/introduction.png")
+
+
 def main():
     workbook = xlsxwriter.Workbook('./out/sheet.xlsx')
 
@@ -333,11 +356,13 @@ def main():
     val_format.set_align("vcenter")
     val_format.set_border()
 
-    weekly_variations(workbook, header_format, val_format)
-    reserved_summary(workbook, header_format, val_format)
-    reservation_usage_summary(workbook, header_format, val_format)
-    instance_size_recommendations(workbook, header_format, val_format)
-    instance_history(workbook, header_format, val_format)
+    gen_introduction(workbook, header_format, val_format)
+    gen_weekly_variations(workbook, header_format, val_format)
+    gen_reserved_summary(workbook, header_format, val_format)
+    gen_reservation_usage_summary(workbook, header_format, val_format)
+    gen_instance_size_recommendations(workbook, header_format, val_format)
+    gen_instance_count_history_chart(workbook, header_format, val_format)
+    gen_instance_count_history(workbook, header_format, val_format)
 
     workbook.close()
 
