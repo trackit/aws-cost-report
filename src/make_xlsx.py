@@ -7,6 +7,7 @@ import json
 import os
 import pprint
 import xlsxwriter
+from datetime import datetime
 
 from sheets import *
 import utils
@@ -34,11 +35,15 @@ NUMFORMAT_CURRENCY = '#,##0.000 [$USD]'
 NUMFORMAT_PERCENT = '0.00%'
 NUMFORMAT_PERCENT_VAR = '\+0.00%;\-0.00%'
 
-IN_INSTANCE_RESERVATION_USAGE_DIR = 'out/instance-reservation-usage'
-IN_RESERVATION_USAGE_DIR = 'out/reservation-usage'
-IN_ABSOLUTE_COST_PER_MONTH = 'out/absolute.csv'
+IN_INSTANCE_RESERVATION_USAGE_DIR    = 'out/instance-reservation-usage'
+IN_RESERVATION_USAGE_DIR             = 'out/reservation-usage'
+IN_ABSOLUTE_COST_PER_MONTH           = 'out/absolute.csv'
 IN_INSTANCE_SIZE_RECOMMENDATIONS_DIR = 'out/instance-size-recommendation'
-IN_INSTANCE_HISTORY = 'out/instance-history.csv'
+IN_INSTANCE_HISTORY                  = 'out/instance-history.csv'
+IN_INSTANCE_USAGE_LAST_MONTH         = 'out/last-month/ec2_instances.csv'
+IN_EC2_BANDWIDTH_USAGE_LAST_MONTH    = 'out/last-month/ec2_bandwidth.csv'
+IN_EBS_USAGE_LAST_MONTH              = 'out/last-month/ebs.csv'
+IN_SNAPSHOT_USAGE_LAST_MONTH         = 'out/last-month/snapshots.csv'
 
 COLOR_RED_BG = "#ffcccc"
 COLOR_RED_FG = "#cc0000"
@@ -335,6 +340,115 @@ def gen_instance_size_recommendations(workbook, header_format, val_format):
                 for h, v in line.items():
                     worksheet.write(i, refs[h][0], v, val_format)
 
+def instance_summary(workbook, header_format, val_format):
+    bandwidth_usage = {}
+    def transform(x):
+        try:
+            if x == "": return 0.0
+            else: return float(x)
+        except ValueError:
+            return x
+    with open(IN_EC2_BANDWIDTH_USAGE_LAST_MONTH) as f:
+        reader = csv.reader(f)
+        for i, line in itertools.islice(zip(itertools.count(2), reader), 1, None):
+            bandwidth_usage[line[0]] = transform(line[1])
+    with open(IN_INSTANCE_USAGE_LAST_MONTH) as f:
+        reader = csv.DictReader(f)
+        worksheet = workbook.add_worksheet("EC2 instances last month")
+
+        now = datetime.now()
+        worksheet.merge_range("A1:E1", "Instances for {}-{:02d}".format(now.year, now.month), header_format)
+        worksheet.merge_range("F1:F2", "Total".format(now.year, now.month), header_format)
+
+        cur_format = workbook.add_format()
+        cur_format.set_align("center")
+        cur_format.set_align("vcenter")
+        cur_format.set_border()
+        cur_format.set_num_format(NUMFORMAT_CURRENCY)
+
+        worksheet.set_column(0, len(reader.fieldnames)+1, 18)
+
+        refs = {
+            "ResourceId": [0, "Resource Id", str, val_format],
+            "AvailabilityZone": [1, "Availability zone", str, val_format],
+            "Term": [2, "Term", str, val_format],
+            "Cost": [3, "Instance cost", transform, cur_format],
+            "Bandwidth": [4, "Bandwidth cost", transform, cur_format],
+        }
+        for v in refs.values():
+            worksheet.write(1, v[0], v[1], header_format)
+        for i, line in zip(itertools.count(2), reader):
+            for h, v in line.items():
+                worksheet.write(i, refs[h][0], refs[h][2](v), refs[h][3])
+            bw_cost = refs['Bandwidth'][2](bandwidth_usage.get(line['ResourceId'], ''))
+            worksheet.write(i, refs['Bandwidth'][0], bw_cost, refs[h][3])
+            worksheet.write(i, len(refs), refs['Cost'][2](line['Cost'])+bw_cost, cur_format)
+
+def ebs_summary(workbook, header_format, val_format):
+    def transform(x):
+        try:
+            if x == "": return 0.0
+            else: return float(x)
+        except ValueError:
+            return x
+    with open(IN_EBS_USAGE_LAST_MONTH) as f:
+        reader = csv.DictReader(f)
+        worksheet = workbook.add_worksheet("EBS last month")
+
+        now = datetime.now()
+        worksheet.merge_range("A1:C1", "EBS for {}-{:02d}".format(now.year, now.month), header_format)
+
+        cur_format = workbook.add_format()
+        cur_format.set_align("center")
+        cur_format.set_align("vcenter")
+        cur_format.set_border()
+        cur_format.set_num_format(NUMFORMAT_CURRENCY)
+
+        worksheet.set_column(0, len(reader.fieldnames)-1, 25)
+
+        refs = {
+            "ResourceId": [0, "Resource Id", str, val_format],
+            "Region": [1, "Region", str, val_format],
+            "Cost": [2, "Cost", transform, cur_format],
+        }
+        for v in refs.values():
+            worksheet.write(1, v[0], v[1], header_format)
+        for i, line in zip(itertools.count(2), reader):
+            for h, v in line.items():
+                worksheet.write(i, refs[h][0], refs[h][2](v), refs[h][3])
+
+def snapshots_summary(workbook, header_format, val_format):
+    def transform(x):
+        try:
+            if x == "": return 0.0
+            else: return float(x)
+        except ValueError:
+            return x
+    with open(IN_SNAPSHOT_USAGE_LAST_MONTH) as f:
+        reader = csv.DictReader(f)
+        worksheet = workbook.add_worksheet("Snapshots last month")
+
+        now = datetime.now()
+        worksheet.merge_range("A1:B1", "Snapshots for {}-{:02d}".format(now.year, now.month), header_format)
+
+        cur_format = workbook.add_format()
+        cur_format.set_align("center")
+        cur_format.set_align("vcenter")
+        cur_format.set_border()
+        cur_format.set_num_format(NUMFORMAT_CURRENCY)
+
+        worksheet.set_column(0, 0, 80)
+        worksheet.set_column(1, 1, 25)
+
+        refs = {
+            "ResourceId": [0, "Resource Id", str, val_format],
+            "Cost": [1, "Cost", transform, cur_format],
+        }
+        for v in refs.values():
+            worksheet.write(1, v[0], v[1], header_format)
+        for i, line in zip(itertools.count(2), reader):
+            for h, v in line.items():
+                worksheet.write(i, refs[h][0], refs[h][2](v), refs[h][3])
 
 def gen_introduction(workbook, header_format, val_format):
     worksheet = workbook.add_worksheet("Introduction")
@@ -363,6 +477,9 @@ def main():
     gen_instance_size_recommendations(workbook, header_format, val_format)
     gen_instance_count_history_chart(workbook, header_format, val_format)
     gen_instance_count_history(workbook, header_format, val_format)
+    instance_summary(workbook, header_format, val_format)
+    ebs_summary(workbook, header_format, val_format)
+    snapshots_summary(workbook, header_format, val_format)
 
     workbook.close()
 
