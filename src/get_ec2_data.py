@@ -146,7 +146,7 @@ def get_ondemand_instance_types(ec2):
     reservations = itertools.chain.from_iterable(p['Reservations'] for p in pages)
     instances = itertools.chain.from_iterable(r['Instances'] for r in reservations)
     instances = (
-        InstanceType(i['InstanceType'], i['Placement']['AvailabilityZone'], i['Placement']['Tenancy'], i.get('Platform', 'Linux/UNIX'), i['VpcId'] != '')
+        InstanceType(i['InstanceType'], i['Placement']['AvailabilityZone'], i['Placement']['Tenancy'], i.get('Platform', 'Linux/UNIX'), i.get('VpcId', '') != '')
         for i in instances
         if i.get('InstanceLifecycle', 'ondemand') == 'ondemand'
     )
