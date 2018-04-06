@@ -357,8 +357,8 @@ def instance_summary(workbook, header_format, val_format):
         worksheet = workbook.add_worksheet("EC2 instances last month")
 
         now = datetime.now()
-        worksheet.merge_range("A1:E1", "Instances for {}-{:02d}".format(now.year, now.month), header_format)
-        worksheet.merge_range("F1:F2", "Total".format(now.year, now.month), header_format)
+        worksheet.merge_range("A1:F1", "Instances for {}-{:02d}".format(now.year, now.month), header_format)
+        worksheet.merge_range("G1:G2", "Total".format(now.year, now.month), header_format)
 
         cur_format = workbook.add_format()
         cur_format.set_align("center")
@@ -372,8 +372,9 @@ def instance_summary(workbook, header_format, val_format):
             "ResourceId": [0, "Resource Id", str, val_format],
             "AvailabilityZone": [1, "Availability zone", str, val_format],
             "Term": [2, "Term", str, val_format],
-            "Cost": [3, "Instance cost", transform, cur_format],
-            "Bandwidth": [4, "Bandwidth cost", transform, cur_format],
+            "Type": [3, "Type", str, val_format],
+            "Cost": [4, "Instance cost", transform, cur_format],
+            "Bandwidth": [5, "Bandwidth cost", transform, cur_format],
         }
         for v in refs.values():
             worksheet.write(1, v[0], v[1], header_format)

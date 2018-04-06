@@ -22,18 +22,19 @@ with utils.csv_folder(USAGECOST_DIR) as records:
             usage_start_date = datetime.strptime(record['lineItem/UsageStartDate'], '%Y-%m-%dT%H:%M:%SZ')
             if usage_start_date >= BEGIN_LAST_MONTH and usage_start_date <= END_LAST_MONTH:
                 if 'BoxUsage' in record['lineItem/UsageType']:
-                    instance_usage_records[(record['lineItem/ResourceId'], record['lineItem/AvailabilityZone'], record['pricing/term'])] += float(record['lineItem/UnblendedCost'])
+                    instance_usage_records[(record['lineItem/ResourceId'], record['lineItem/AvailabilityZone'], record['pricing/term'], record['product/instanceType'])] += float(record['lineItem/UnblendedCost'])
                 elif 'DataTransfer' in record['lineItem/UsageType']:
                     bandwidth_usage_records[record['lineItem/ResourceId']] += float(record['lineItem/UnblendedCost'])
 
 with open(OUT_PATH_INSTANCES, 'w') as outfile:
     writer = csv.writer(outfile)
-    writer.writerow(['ResourceId', 'AvailabilityZone', 'Term', 'Cost'])
+    writer.writerow(['ResourceId', 'AvailabilityZone', 'Term', 'Type', 'Cost'])
     for instance in sorted(instance_usage_records.keys(), key=lambda tup: tup[0]):
         writer.writerow([
             instance[0],
             instance[1],
             instance[2],
+            instance[3],
             repr(instance_usage_records[instance]),
         ])
 
