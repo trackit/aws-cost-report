@@ -207,14 +207,20 @@ def get_instance_offerings(ec2, instance_types):
     return [o for o in offerings if o]
 
 def instance_type_matches(pattern, example):
+    def get_generic_type(instancetype):
+        if instancetype.lower().startswith('windows') or instancetype.lower().startswith('suse'):
+            return instancetype
+        return 'Linux/UNIX'
+    tmpPattern = pattern.type._replace(product=get_generic_type(pattern.type.product))
+    tmpExample = example._replace(product=get_generic_type(pattern.type.product))
     if example.vpc == True:
-        return (pattern.type == example or pattern.type == example._replace(vpc=False) or
-        pattern.type == example._replace(vpc=False, availability_zone=az_to_region(example.availability_zone)) or
-        pattern.type == example._replace(availability_zone=az_to_region(example.availability_zone)) or
-        pattern.type == example._replace(product=example.product+' (Amazon VPC)') or
-        pattern.type == example._replace(availability_zone=az_to_region(example.availability_zone), product=example.product+' (Amazon VPC)'))
+        return (tmpPattern == example or tmpPattern == example._replace(vpc=False) or
+        tmpPattern == tmpExample._replace(vpc=False, availability_zone=az_to_region(example.availability_zone)) or
+        tmpPattern == tmpExample._replace(availability_zone=az_to_region(example.availability_zone)))
     else:
-        return (pattern.type == example or pattern.type == example._replace(availability_zone=az_to_region(example.availability_zone)))
+        return (tmpPattern == example or tmpPattern == example._replace(availability_zone=az_to_region(example.availability_zone)) or
+        tmpPattern == tmpExample._replace(vpc=True) or
+        tmpPattern == tmpExample._replace(vpc=True, availability_zone=az_to_region(example.availability_zone)))
 
 def get_instance_matchings(instance_offerings, reserved_instances, ondemand_instances):
     remaining_reserved_instances = [
@@ -222,7 +228,6 @@ def get_instance_matchings(instance_offerings, reserved_instances, ondemand_inst
         for ri in reserved_instances
     ]
     print("BEGIN MATCHING")
-    pp.pprint(reserved_instances)
     pp.pprint(remaining_reserved_instances)
     matches = []
     for oi in sorted(ondemand_instances, reverse=True, key=lambda oi: oi[0].availability_zone[::-1]):
