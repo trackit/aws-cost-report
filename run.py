@@ -61,7 +61,7 @@ def parse_args():
     )
     parser.add_argument(
         "--xlsx-name",
-        help='Name of the XLSX file under the format "trackit_<xlsx-name>_aws_cost_report_YYYY_MM_DD.xlsx"',
+        help="Name of the XLSX file.",
         dest="xlsx_name",
         default="",
     )
