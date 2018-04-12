@@ -379,14 +379,20 @@ def instance_summary(workbook, header_format, val_format):
             "Cost": [4, "Instance cost", transform, cur_format],
             "Bandwidth": [5, "Bandwidth cost", transform, cur_format],
         }
+        ec2_cost_data = []
+        for i, line in zip(itertools.count(2), reader):
+            line['Bandwidth'] = refs['Bandwidth'][2](bandwidth_usage.get(line['ResourceId'], ''))
+            line['Total'] = refs['Bandwidth'][2](line['Cost']) + line['Bandwidth']
+            ec2_cost_data.append(line)
+        ec2_cost_data.sort(key=lambda e: e['Total'], reverse=True)
         for v in refs.values():
             worksheet.write(1, v[0], v[1], header_format)
-        for i, line in zip(itertools.count(2), reader):
+        for i, line in zip(itertools.count(2), ec2_cost_data):
             for h, v in line.items():
+                if h == 'Total':
+                    continue
                 worksheet.write(i, refs[h][0], refs[h][2](v), refs[h][3])
-            bw_cost = refs['Bandwidth'][2](bandwidth_usage.get(line['ResourceId'], ''))
-            worksheet.write(i, refs['Bandwidth'][0], bw_cost, refs[h][3])
-            worksheet.write(i, len(refs), refs['Cost'][2](line['Cost'])+bw_cost, cur_format)
+            worksheet.write(i, len(refs), line['Total'], cur_format)
 
 def ebs_summary(workbook, header_format, val_format):
     def transform(x):

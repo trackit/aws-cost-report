@@ -29,7 +29,7 @@ with utils.csv_folder(USAGECOST_DIR) as records:
 with open(OUT_PATH_EBS, 'w') as outfile:
     writer = csv.writer(outfile)
     writer.writerow(['ResourceId', 'Region', 'Cost'])
-    for ebs in sorted(ebs_usage_records.keys(), key=lambda tup: tup[0]):
+    for ebs in sorted(ebs_usage_records.keys(), key=lambda tup: ebs_usage_records[tup], reverse=True):
         writer.writerow([
             ebs[0],
             ebs[1],
@@ -39,7 +39,7 @@ with open(OUT_PATH_EBS, 'w') as outfile:
 with open(OUT_PATH_SNAPSHOTS, 'w') as outfile:
     writer = csv.writer(outfile)
     writer.writerow(['ResourceId', 'Cost'])
-    for rid in sorted(snapshot_usage_records.keys()):
+    for rid in sorted(snapshot_usage_records.keys(), key=lambda rid: snapshot_usage_records[rid], reverse=True):
         writer.writerow([
             rid,
             repr(snapshot_usage_records[rid]),

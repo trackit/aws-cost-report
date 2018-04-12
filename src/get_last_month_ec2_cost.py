@@ -29,7 +29,7 @@ with utils.csv_folder(USAGECOST_DIR) as records:
 with open(OUT_PATH_INSTANCES, 'w') as outfile:
     writer = csv.writer(outfile)
     writer.writerow(['ResourceId', 'AvailabilityZone', 'Term', 'Type', 'Cost'])
-    for instance in sorted(instance_usage_records.keys(), key=lambda tup: tup[0]):
+    for instance in sorted(instance_usage_records.keys(), key=lambda tup: instance_usage_records[tup], reverse=True):
         writer.writerow([
             instance[0],
             instance[1],
@@ -41,7 +41,7 @@ with open(OUT_PATH_INSTANCES, 'w') as outfile:
 with open(OUT_PATH_BANDWIDTH, 'w') as outfile:
     writer = csv.writer(outfile)
     writer.writerow(['ResourceId', 'Bandwidth'])
-    for instance in sorted(bandwidth_usage_records.keys()):
+    for instance in sorted(bandwidth_usage_records.keys(), key=lambda instance: bandwidth_usage_records[instance], reverse=True):
         writer.writerow([
             instance,
             repr(bandwidth_usage_records[instance]),
