@@ -60,6 +60,12 @@ def parse_args():
         default=True,
     )
     parser.add_argument(
+        "--xlsx-name",
+        help="Name of the XLSX file.",
+        dest="xlsx_name",
+        default="",
+    )
+    parser.add_argument(
         "--generate-gsheet",
         help="Generate a Google Sheet after all data was retrieved.",
         dest="generate_gsheet",
@@ -117,8 +123,8 @@ def build_gsheet():
     os.system("src/make_gsheet.py")
 
 
-def build_xlsx():
-    os.system("src/make_xlsx.py")
+def build_xlsx(name):
+    os.system("src/make_xlsx.py {}".format(name))
 
 def get_session(profile):
     if profile != 'env':
@@ -260,7 +266,7 @@ def main():
         if args.generate_gsheet:
             build_gsheet()
         if args.generate_xslx:
-            build_xlsx()
+            build_xlsx(args.xlsx_name)
 
 
 if __name__ == "__main__":
