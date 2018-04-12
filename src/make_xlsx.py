@@ -4,10 +4,12 @@ import collections
 import csv
 import itertools
 import json
+import datetime
 import os
 import pprint
 import xlsxwriter
 from datetime import datetime
+import sys
 
 from sheets import *
 import utils
@@ -457,8 +459,8 @@ def gen_introduction(workbook, header_format, val_format):
     worksheet.insert_image("A1", "src/ressources/introduction.png")
 
 
-def main():
-    workbook = xlsxwriter.Workbook('./out/sheet.xlsx')
+def main(name):
+    workbook = xlsxwriter.Workbook('./out/{}.xlsx'.format(name))
 
     header_format = workbook.add_format()
     header_format.set_bold()
@@ -487,5 +489,6 @@ def main():
 
 if __name__ == '__main__':
     print("Generating xlsx file.")
-    main()
-    print("sheet.xlsx generated!")
+    name = sys.argv[1] if len(sys.argv) > 1 else "sheet"
+    main(name)
+    print("{}.xlsx generated!".format(name))
