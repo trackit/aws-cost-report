@@ -84,8 +84,8 @@ def gen_reserved_summary(workbook, header_format, val_format):
             "availability_zone": [1, "Availability zone", str, val_format],
             "tenancy": [2, "Tenancy", str, val_format],
             "product": [3, "Product", str, val_format],
-            "count_reserved": [4, "Reserved", int, val_format],
-            "count": [5, "Used", int, val_format],
+            "count": [4, "Running", int, val_format],
+            "count_reserved": [5, "Reserved", int, val_format],
             "cost_ondemand": [6, "On demand", float, cur_format],
             "cost_reserved_worst": [7, "Worst reserved", float, cur_format],
             "cost_reserved_best": [8, "Best reserved", float, cur_format],
@@ -105,7 +105,7 @@ def gen_reserved_summary(workbook, header_format, val_format):
                     float(line["cost_" + h[13:]]) * 720
                 worksheet.write_formula(
                     i, refs[h][0],
-                    "=F{}*{}{}*720".format(i+1, chr(ord('A') +
+                    "=E{}*{}{}*720".format(i+1, chr(ord('A') +
                                                     refs[h][0] - 3), i+1), refs[h][3],
                     res,
                 )
@@ -118,10 +118,10 @@ def gen_reserved_summary(workbook, header_format, val_format):
                                              refs[h][0] - 5), i+1, i+1), refs[h][3],
                     res,
                 )
-            worksheet.conditional_format("E{}".format(i+1), {
+            worksheet.conditional_format("F{}".format(i+1), {
                 "type": "cell",
                 "criteria": "equal to",
-                "value": "F{}".format(i+1),
+                "value": "E{}".format(i+1),
                 "format": green_format,
             })
 
