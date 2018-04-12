@@ -9,6 +9,7 @@ import os
 import pprint
 import xlsxwriter
 from datetime import datetime
+import dateutil.relativedelta
 import sys
 
 from sheets import *
@@ -358,9 +359,9 @@ def instance_summary(workbook, header_format, val_format):
         reader = csv.DictReader(f)
         worksheet = workbook.add_worksheet("EC2 instances last month")
 
-        now = datetime.now()
-        worksheet.merge_range("A1:F1", "Instances for {}-{:02d}".format(now.year, now.month), header_format)
-        worksheet.merge_range("G1:G2", "Total".format(now.year, now.month), header_format)
+        last_month = datetime.now() + dateutil.relativedelta.relativedelta(months=-1)
+        worksheet.merge_range("A1:F1", "Instances for {}-{:02d}".format(last_month.year, last_month.month), header_format)
+        worksheet.merge_range("G1:G2", "Total", header_format)
 
         cur_format = workbook.add_format()
         cur_format.set_align("center")
@@ -398,8 +399,8 @@ def ebs_summary(workbook, header_format, val_format):
         reader = csv.DictReader(f)
         worksheet = workbook.add_worksheet("EBS last month")
 
-        now = datetime.now()
-        worksheet.merge_range("A1:C1", "EBS for {}-{:02d}".format(now.year, now.month), header_format)
+        last_month = datetime.now() + dateutil.relativedelta.relativedelta(months=-1)
+        worksheet.merge_range("A1:C1", "EBS for {}-{:02d}".format(last_month.year, last_month.month), header_format)
 
         cur_format = workbook.add_format()
         cur_format.set_align("center")
@@ -431,8 +432,8 @@ def snapshots_summary(workbook, header_format, val_format):
         reader = csv.DictReader(f)
         worksheet = workbook.add_worksheet("Snapshots last month")
 
-        now = datetime.now()
-        worksheet.merge_range("A1:B1", "Snapshots for {}-{:02d}".format(now.year, now.month), header_format)
+        last_month = datetime.now() + dateutil.relativedelta.relativedelta(months=-1)
+        worksheet.merge_range("A1:B1", "Snapshots for {}-{:02d}".format(last_month.year, last_month.month), header_format)
 
         cur_format = workbook.add_format()
         cur_format.set_align("center")
