@@ -11,6 +11,8 @@ import zipfile
 import gzip
 import time
 import shutil
+import dateutil.relativedelta
+from datetime import datetime
 
 class Parser(argparse.ArgumentParser):
     def print_help(self, file=sys.stdout):
@@ -207,7 +209,8 @@ def do_get_billing_data(profile, bucket, prefix):
         session = get_session(profile)
         s3_client = session.client("s3")
         objs = s3_client.list_objects(Bucket=bucket, Prefix=prefix)["Contents"]
-        objs = [obj for obj in objs if obj["Key"].endswith(".json") and len(obj["Key"].split('/', 1)[-1].split('/')) == 3]
+        min_date = (datetime.now() + dateutil.relativedelta.relativedelta(months=-6)).replace(day=1).strftime('%Y%m%d')
+        objs = [obj for obj in objs if obj["Key"].endswith(".json") and len(obj["Key"].split('/', 1)[-1].split('/')) == 3 and obj["Key"].split('/')[-2] >= min_date]
     except Exception as e:
         exit(e)
     analyze_obj(s3_client, objs)
