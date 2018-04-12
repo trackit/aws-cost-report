@@ -1,3 +1,4 @@
+![](https://s3-us-west-2.amazonaws.com/trackit-public-artifacts/aws-cost-report/introduction.png)
 # Cost report generator
 
 ## Requirements
@@ -55,3 +56,26 @@ $> docker run -v /local/path/out:/root/aws-cost-report/out -e AWS_ACCESS_KEY_ID=
 # Run with multiple billing buckets and EC2 profiles, using your local aws credentials
 $> docker run -v /path/to/credentials:/root/.aws:ro -v /local/path/out:/root/aws-cost-report/out msolution/aws-cost-report --no-generate-sheet --billing profile_name billing-bucket-name prefix --billing profile_name2 billing-bucket-name2 prefix2 --ec2 profile_name --ec2 profile_name2 --xlsx-name filename
 ```
+
+## Screenshots
+
+Download the report example [here](https://s3-us-west-2.amazonaws.com/trackit-public-artifacts/aws-cost-report/report-example.xlsx).
+
+### Cost and variations tab
+
+![](https://s3-us-west-2.amazonaws.com/trackit-public-artifacts/aws-cost-report/cost-variations.png)
+
+
+### Reserved instance summary
+
+![](https://s3-us-west-2.amazonaws.com/trackit-public-artifacts/aws-cost-report/reserved-instance-summary.png)
+
+
+### Instance size recommendations
+
+![](https://s3-us-west-2.amazonaws.com/trackit-public-artifacts/aws-cost-report/instance-size-recommendations.png)
+
+
+### EC2 instances last month
+
+![](https://s3-us-west-2.amazonaws.com/trackit-public-artifacts/aws-cost-report/ec2-instances-last-month.png)
