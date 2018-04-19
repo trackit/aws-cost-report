@@ -15,9 +15,15 @@ BEGIN_LAST_MONTH = (datetime.now() + dateutil.relativedelta.relativedelta(months
 END_LAST_MONTH = (BEGIN_LAST_MONTH + dateutil.relativedelta.relativedelta(months=1, days=-1)).replace(hour=23, minute=59, second=59, microsecond=999999)
 
 with utils.csv_folder(USAGECOST_DIR) as records:
+    resource_id_missing = False
     instance_usage_records = defaultdict(float)
     bandwidth_usage_records = defaultdict(float)
     for record in records:
+        if 'lineItem/ResourceId' not in record:
+            if resource_id_missing == False:
+                print("Error: the billing report does not export the ResourceId")
+                resource_id_missing = True
+            continue
         if record['lineItem/ProductCode'] == 'AmazonEC2':
             usage_start_date = datetime.strptime(record['lineItem/UsageStartDate'], '%Y-%m-%dT%H:%M:%SZ')
             if usage_start_date >= BEGIN_LAST_MONTH and usage_start_date <= END_LAST_MONTH:
