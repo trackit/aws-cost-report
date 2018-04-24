@@ -104,6 +104,7 @@ try_mkdir("out")
 try_mkdir("out/reservation-usage")
 try_mkdir("out/instance-reservation-usage")
 try_mkdir("out/instance-size-recommendation")
+try_mkdir("out/last-month")
 
 default_region = "us-east-1"
 
@@ -118,6 +119,11 @@ def build_billing_diff():
 def build_instance_history():
     os.system("src/get_ec2_instance_history.py")
 
+def build_ec2_last_month_usage():
+    os.system("src/get_last_month_ec2_cost.py")
+
+def build_ebs_last_month_usage():
+    os.system("src/get_last_month_ebs_cost.py")
 
 def build_gsheet():
     os.system("src/make_gsheet.py")
@@ -263,6 +269,8 @@ def main():
     if args.generate_gsheet or args.generate_xslx:
         build_billing_diff()
         build_instance_history()
+        build_ec2_last_month_usage()
+        build_ebs_last_month_usage()
         if args.generate_gsheet:
             build_gsheet()
         if args.generate_xslx:
