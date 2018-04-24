@@ -326,8 +326,10 @@ def gen_instance_size_recommendations(workbook, header_format, val_format):
         worksheet = workbook.add_worksheet("Instance size recommendations")
 
         worksheet.set_column("A:F", 25)
+        worksheet.set_column("G:G", 40)
         worksheet.merge_range("A1:E1", "Instance", header_format)
         worksheet.merge_range("F1:F2", "Recommended", header_format)
+        worksheet.merge_range("G1:G2", "Reason", header_format)
 
         refs = {
             "account": [0, "Account"],
@@ -336,6 +338,7 @@ def gen_instance_size_recommendations(workbook, header_format, val_format):
             "size": [3, "Type"],
             "lifecycle": [4, "Lifecycle"],
             "recommendation": [5, "Recommendation"],
+            "reason": [6, "Reason"]
         }
         for i in refs.values():
             worksheet.write(1, i[0], i[1], header_format)

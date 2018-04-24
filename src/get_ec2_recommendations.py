@@ -44,6 +44,7 @@ InstanceRecommendation = collections.namedtuple('InstanceRecommendation', [
     'size',
     'lifecycle',
     'recommendation',
+    'reason',
 ])
 
 def next_or(it, default):
@@ -74,6 +75,15 @@ def recommended_size(size, cpu_usage):
     matching_norm_factor = next(size for size, norm_factor in NORM_FACTOR.items() if norm_factor >= target_norm_factor)
     return matching_norm_factor
 
+def get_reason(cpu_usage, current_size, recommendation):
+    if cpu_usage is None:
+        return 'insufficient_data'
+    elif cpu_usage > 0.80:
+        return 'High CPU usage average: {0:.3f}%'.format(cpu_usage*100)
+    elif current_size == recommendation:
+        return 'Optimal CPU usage average'
+    return 'Low CPU usage average: {0:.3f}%'.format(cpu_usage*100)
+
 def get_cpu_usage(cloudwatch, now, instance_id):
     usage_statistics = cloudwatch.get_metric_statistics(
         Namespace='AWS/EC2',
@@ -99,12 +109,14 @@ def get_recommendation(instance):
         instance_lifecycle = instance.get('InstanceLifecycle', 'ondemand')
         cpu_usage = get_cpu_usage(cloudwatch, now, instance_id)
         recommendation = recommended_size(instance_type.size, cpu_usage) if cpu_usage is not None else 'insufficient_data'
+        reason = get_reason(cpu_usage, instance_type.size, recommendation)
         return InstanceRecommendation(
             id=instance_id,
             name=instance_name,
             size=instance_type_str,
             lifecycle=instance_lifecycle,
             recommendation=recommendation,
+            reason=reason,
             account=ACCOUNT,
         )
 
