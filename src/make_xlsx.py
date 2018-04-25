@@ -316,12 +316,19 @@ def gen_instance_count_history_chart(workbook, header_format, val_format):
 
 
 def gen_instance_size_recommendations(workbook, header_format, val_format):
+    def transform(h, v):
+        if h == "cpu_usage":
+            return "%.2f%%" % float(v)
+        return v
+
     with utils.csv_folder(IN_INSTANCE_SIZE_RECOMMENDATIONS_DIR) as source:
         worksheet = workbook.add_worksheet("Instance size recommendations")
 
-        worksheet.set_column("A:F", 25)
-        worksheet.merge_range("A1:E1", "Instance", header_format)
-        worksheet.merge_range("F1:F2", "Recommended", header_format)
+        worksheet.set_column("A:E", 25)
+        worksheet.set_column("F:F", 20)
+        worksheet.set_column("G:G", 25)
+        worksheet.merge_range("A1:F1", "Instance", header_format)
+        worksheet.merge_range("G1:G2", "Recommended", header_format)
 
         refs = {
             "account": [0, "Account"],
@@ -329,13 +336,14 @@ def gen_instance_size_recommendations(workbook, header_format, val_format):
             "name": [2, "Name"],
             "size": [3, "Type"],
             "lifecycle": [4, "Lifecycle"],
-            "recommendation": [5, "Recommendation"],
+            "cpu_usage": [5, "CPU Utilization (Avg.)"],
+            "recommendation": [6, "Recommendation"],
         }
         for i in refs.values():
             worksheet.write(1, i[0], i[1], header_format)
             for i, line in zip(itertools.count(2), source):
                 for h, v in line.items():
-                    worksheet.write(i, refs[h][0], v, val_format)
+                    worksheet.write(i, refs[h][0], transform(h, v), val_format)
 
 
 def gen_introduction(workbook, header_format, val_format):
