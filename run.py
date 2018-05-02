@@ -11,6 +11,8 @@ import zipfile
 import gzip
 import time
 import shutil
+import dateutil.relativedelta
+from datetime import datetime
 
 class Parser(argparse.ArgumentParser):
     def print_help(self, file=sys.stdout):
@@ -104,6 +106,7 @@ try_mkdir("out")
 try_mkdir("out/reservation-usage")
 try_mkdir("out/instance-reservation-usage")
 try_mkdir("out/instance-size-recommendation")
+try_mkdir("out/last-month")
 
 default_region = "us-east-1"
 
@@ -118,6 +121,11 @@ def build_billing_diff():
 def build_instance_history():
     os.system("src/get_ec2_instance_history.py")
 
+def build_ec2_last_month_usage():
+    os.system("src/get_last_month_ec2_cost.py")
+
+def build_ebs_last_month_usage():
+    os.system("src/get_last_month_ebs_cost.py")
 
 def build_gsheet():
     os.system("src/make_gsheet.py")
@@ -207,7 +215,8 @@ def do_get_billing_data(profile, bucket, prefix):
         session = get_session(profile)
         s3_client = session.client("s3")
         objs = s3_client.list_objects(Bucket=bucket, Prefix=prefix)["Contents"]
-        objs = [obj for obj in objs if obj["Key"].endswith(".json") and len(obj["Key"].split('/', 1)[-1].split('/')) == 3]
+        min_date = (datetime.now() + dateutil.relativedelta.relativedelta(months=-6)).replace(day=1).strftime('%Y%m%d')
+        objs = [obj for obj in objs if obj["Key"].endswith(".json") and len(obj["Key"].split('/', 1)[-1].split('/')) == 3 and obj["Key"].split('/')[-2] >= min_date]
     except Exception as e:
         exit(e)
     analyze_obj(s3_client, objs)
@@ -263,6 +272,8 @@ def main():
     if args.generate_gsheet or args.generate_xslx:
         build_billing_diff()
         build_instance_history()
+        build_ec2_last_month_usage()
+        build_ebs_last_month_usage()
         if args.generate_gsheet:
             build_gsheet()
         if args.generate_xslx:
