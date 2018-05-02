@@ -324,7 +324,7 @@ def gen_instance_count_history_chart(workbook, header_format, val_format):
 def gen_instance_size_recommendations(workbook, header_format, val_format):
     def transform(h, v):
         if h == "cpu_usage":
-            return "%.2f%%" % float(v)
+            return "%.2f%%" % (float(v)*100)
         return v
 
     with utils.csv_folder(IN_INSTANCE_SIZE_RECOMMENDATIONS_DIR) as source:
