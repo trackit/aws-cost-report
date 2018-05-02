@@ -153,8 +153,8 @@ def gen_reservation_usage_summary(workbook, header_format, val_format):
             "availability_zone": [1, "Availability zone", str, val_format],
             "tenancy": [2, "Tenancy", str, val_format],
             "product": [3, "Product", str, val_format],
-            "count": [4, "Reserved", int, val_format],
-            "count_used": [5, "Used", int, val_format],
+            "count_used": [4, "Running", int, val_format],
+            "count": [5, "Reserved", int, val_format],
             "cost_upfront": [6, "Upfront", float, cur_format],
             "cost_hourly": [7, "Hourly", float, cur_format],
             "effective_cost": [8, "Effective", float, cur_format],
@@ -174,7 +174,7 @@ def gen_reservation_usage_summary(workbook, header_format, val_format):
             )
             worksheet.write(
                 i, refs["monthly_losses"][0],
-                "=(E{}-F{})*I{}*720".format(*[i+1]
+                "=(F{}-E{})*I{}*720".format(*[i+1]
                                             * 3), refs["monthly_losses"][3],
                 (float(line["count"]) - float(line["count_used"])
                  ) * effective_cost * 720,
