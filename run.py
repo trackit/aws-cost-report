@@ -61,11 +61,12 @@ def parse_args():
         action="store_false",
         default=True,
     )
+    now = datetime.now()
     parser.add_argument(
         "--xlsx-name",
         help="Name of the XLSX file.",
         dest="xlsx_name",
-        default="",
+        default=now.strftime("trackit_aws_cost_report_%Y_%m_%d"),
     )
     parser.add_argument(
         "--generate-gsheet",

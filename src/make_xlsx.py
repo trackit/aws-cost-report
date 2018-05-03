@@ -153,8 +153,8 @@ def gen_reservation_usage_summary(workbook, header_format, val_format):
             "availability_zone": [1, "Availability zone", str, val_format],
             "tenancy": [2, "Tenancy", str, val_format],
             "product": [3, "Product", str, val_format],
-            "count": [4, "Reserved", int, val_format],
-            "count_used": [5, "Used", int, val_format],
+            "count_used": [4, "Running", int, val_format],
+            "count": [5, "Reserved", int, val_format],
             "cost_upfront": [6, "Upfront", float, cur_format],
             "cost_hourly": [7, "Hourly", float, cur_format],
             "effective_cost": [8, "Effective", float, cur_format],
@@ -174,7 +174,7 @@ def gen_reservation_usage_summary(workbook, header_format, val_format):
             )
             worksheet.write(
                 i, refs["monthly_losses"][0],
-                "=(E{}-F{})*I{}*720".format(*[i+1]
+                "=(F{}-E{})*I{}*720".format(*[i+1]
                                             * 3), refs["monthly_losses"][3],
                 (float(line["count"]) - float(line["count_used"])
                  ) * effective_cost * 720,
@@ -271,6 +271,34 @@ def gen_weekly_variations(workbook, header_format, val_format):
                 i+1), sum([float(line[o]) for o in reader.fieldnames[1:]]), cur_format)
 
 
+def gen_weekly_variations_chart(workbook, header_format, val_format):
+    with open(IN_ABSOLUTE_COST_PER_MONTH) as f:
+        reader = csv.DictReader(f)
+        source = sorted(
+            reader,
+            key=(lambda row: sum(float(v) for k, v in row.items() if k != 'usage')),
+            reverse=True,
+        )[:5]
+
+        header = ['usage'] + sorted([s for s in source[0] if s != 'usage'])
+        data = [
+            [float(s[h]) if h != 'usage' else s[h] for h in header]
+            for s in source
+        ]
+        chart = workbook.add_chart({
+            "type": "line"
+        })
+        chartsheet = workbook.add_worksheet("Cost variations chart")
+        chartsheet.add_table(1, 1, len(data)+1, len(header)-1, {'data': data, 'columns': [{'header': h} for h in header]})
+        for i in range(2, len(data)+1):
+            chart.add_series({
+                "values": ["Cost variations chart", i, 2, i, len(header)-1],
+                "categories": ["Cost variations chart", 1, 2, 1, len(header)-1],
+                "name": ["Cost variations chart", i, 1],
+            })
+        chartsheet.insert_chart('A1', chart, {'x_scale': 3, 'y_scale': 2})
+
+
 def gen_instance_count_history(workbook, header_format, val_format):
     with open(IN_INSTANCE_HISTORY) as f:
         reader = csv.DictReader(f)
@@ -322,14 +350,24 @@ def gen_instance_count_history_chart(workbook, header_format, val_format):
 
 
 def gen_instance_size_recommendations(workbook, header_format, val_format):
+    def transform(h, v):
+        if h == "cpu_usage":
+            try:
+                return "%.3f%%" % (float(v)*100)
+            except ValueError:
+                pass
+        return v
+
     with utils.csv_folder(IN_INSTANCE_SIZE_RECOMMENDATIONS_DIR) as source:
         worksheet = workbook.add_worksheet("Instance size recommendations")
 
-        worksheet.set_column("A:F", 25)
-        worksheet.set_column("G:G", 40)
-        worksheet.merge_range("A1:E1", "Instance", header_format)
-        worksheet.merge_range("F1:F2", "Recommended", header_format)
-        worksheet.merge_range("G1:G2", "Reason", header_format)
+        worksheet.set_column("A:E", 25)
+        worksheet.set_column("F:F", 20)
+        worksheet.set_column("G:G", 18)
+        worksheet.set_column("H:H", 35)
+        worksheet.merge_range("A1:F1", "Instance", header_format)
+        worksheet.merge_range("G1:G2", "Recommended", header_format)
+        worksheet.merge_range("H1:H2", "Reason", header_format)
 
         refs = {
             "account": [0, "Account"],
@@ -337,14 +375,15 @@ def gen_instance_size_recommendations(workbook, header_format, val_format):
             "name": [2, "Name"],
             "size": [3, "Type"],
             "lifecycle": [4, "Lifecycle"],
-            "recommendation": [5, "Recommendation"],
-            "reason": [6, "Reason"]
+            "cpu_usage": [5, "CPU Utilization (Avg.)"],
+            "recommendation": [6, "Recommendation"],
+            "reason": [7, "Reason"]
         }
         for i in refs.values():
             worksheet.write(1, i[0], i[1], header_format)
             for i, line in zip(itertools.count(2), source):
                 for h, v in line.items():
-                    worksheet.write(i, refs[h][0], v, val_format)
+                    worksheet.write(i, refs[h][0], transform(h, v), val_format)
 
 def instance_summary(workbook, header_format, val_format):
     bandwidth_usage = {}
@@ -493,6 +532,7 @@ def main(name):
 
     gen_introduction(workbook, header_format, val_format)
     gen_weekly_variations(workbook, header_format, val_format)
+    gen_weekly_variations_chart(workbook, header_format, val_format)
     gen_reserved_summary(workbook, header_format, val_format)
     gen_reservation_usage_summary(workbook, header_format, val_format)
     gen_instance_size_recommendations(workbook, header_format, val_format)
