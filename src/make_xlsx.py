@@ -271,6 +271,34 @@ def gen_weekly_variations(workbook, header_format, val_format):
                 i+1), sum([float(line[o]) for o in reader.fieldnames[1:]]), cur_format)
 
 
+def gen_weekly_variations_chart(workbook, header_format, val_format):
+    with open(IN_ABSOLUTE_COST_PER_MONTH) as f:
+        reader = csv.DictReader(f)
+        source = sorted(
+            reader,
+            key=(lambda row: sum(float(v) for k, v in row.items() if k != 'usage')),
+            reverse=True,
+        )[:5]
+
+        header = ['usage'] + sorted([s for s in source[0] if s != 'usage'])
+        data = [
+            [float(s[h]) if h != 'usage' else s[h] for h in header]
+            for s in source
+        ]
+        chart = workbook.add_chart({
+            "type": "line"
+        })
+        chartsheet = workbook.add_worksheet("Cost variations chart")
+        chartsheet.add_table(1, 1, len(data)+1, len(header)-1, {'data': data, 'columns': [{'header': h} for h in header]})
+        for i in range(2, len(data)+1):
+            chart.add_series({
+                "values": ["Cost variations chart", i, 2, i, len(header)-1],
+                "categories": ["Cost variations chart", 1, 2, 1, len(header)-1],
+                "name": ["Cost variations chart", i, 1],
+            })
+        chartsheet.insert_chart('A1', chart, {'x_scale': 3, 'y_scale': 2})
+
+
 def gen_instance_count_history(workbook, header_format, val_format):
     with open(IN_INSTANCE_HISTORY) as f:
         reader = csv.DictReader(f)
@@ -485,6 +513,7 @@ def main(name):
 
     gen_introduction(workbook, header_format, val_format)
     gen_weekly_variations(workbook, header_format, val_format)
+    gen_weekly_variations_chart(workbook, header_format, val_format)
     gen_reserved_summary(workbook, header_format, val_format)
     gen_reservation_usage_summary(workbook, header_format, val_format)
     gen_instance_size_recommendations(workbook, header_format, val_format)
