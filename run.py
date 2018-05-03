@@ -107,6 +107,7 @@ try_mkdir("out")
 try_mkdir("out/reservation-usage")
 try_mkdir("out/instance-reservation-usage")
 try_mkdir("out/instance-size-recommendation")
+try_mkdir("out/instance-metadata")
 try_mkdir("out/last-month")
 
 default_region = "us-east-1"
@@ -227,6 +228,7 @@ def do_get_billing_data(profile, bucket, prefix):
 def do_get_instance_data(profile, region):
     os.system("{} src/get_ec2_data.py".format(awsenv(profile, region)))
     os.system("{} src/get_ec2_recommendations.py".format(awsenv(profile, region)))
+    os.system("{} src/get_ec2_metadata.py".format(awsenv(profile, region)))
 
 
 def recursivly_remove_file(path):
