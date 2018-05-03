@@ -363,8 +363,8 @@ def instance_summary(workbook, header_format, val_format):
         worksheet = workbook.add_worksheet("EC2 instances last month")
 
         last_month = datetime.now() + dateutil.relativedelta.relativedelta(months=-1)
-        worksheet.merge_range("A1:F1", "Instances for {}-{:02d}".format(last_month.year, last_month.month), header_format)
-        worksheet.merge_range("G1:G2", "Total", header_format)
+        worksheet.merge_range("A1:G1", "Instances for {}-{:02d}".format(last_month.year, last_month.month), header_format)
+        worksheet.merge_range("H1:H2", "Total", header_format)
 
         cur_format = workbook.add_format()
         cur_format.set_align("center")
@@ -372,15 +372,17 @@ def instance_summary(workbook, header_format, val_format):
         cur_format.set_border()
         cur_format.set_num_format(NUMFORMAT_CURRENCY)
 
-        worksheet.set_column(0, len(reader.fieldnames)+1, 18)
+        worksheet.set_column(2, len(reader.fieldnames)+1, 18)
+        worksheet.set_column("A:B", 33)
 
         refs = {
             "ResourceId": [0, "Resource Id", str, val_format],
-            "AvailabilityZone": [1, "Availability zone", str, val_format],
-            "Term": [2, "Term", str, val_format],
-            "Type": [3, "Type", str, val_format],
-            "Cost": [4, "Instance cost", transform, cur_format],
-            "Bandwidth": [5, "Bandwidth cost", transform, cur_format],
+            "Name": [1, "Name", str, val_format],
+            "AvailabilityZone": [2, "Availability zone", str, val_format],
+            "Term": [3, "Term", str, val_format],
+            "Type": [4, "Type", str, val_format],
+            "Cost": [5, "Instance cost", transform, cur_format],
+            "Bandwidth": [6, "Bandwidth cost", transform, cur_format],
         }
         ec2_cost_data = []
         for i, line in zip(itertools.count(2), reader):

@@ -8,12 +8,18 @@ import dateutil.relativedelta
 import utils
 
 USAGECOST_DIR='in/usagecost'
+METADATA_DIR='out/instance-metadata'
 OUT_PATH_INSTANCES = 'out/last-month/ec2_instances.csv'
 OUT_PATH_BANDWIDTH = 'out/last-month/ec2_bandwidth.csv'
 
 BEGIN_LAST_MONTH = (datetime.now() + dateutil.relativedelta.relativedelta(months=-1)).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
 END_LAST_MONTH = (BEGIN_LAST_MONTH + dateutil.relativedelta.relativedelta(months=1, days=-1)).replace(hour=23, minute=59, second=59, microsecond=999999)
 
+with utils.csv_folder(METADATA_DIR) as records:
+    instance_name = defaultdict(str)
+    for record in records:
+        instance_name[record['instance_id']] = record['name']
+    
 with utils.csv_folder(USAGECOST_DIR) as records:
     resource_id_missing = False
     instance_usage_records = defaultdict(float)
@@ -34,10 +40,11 @@ with utils.csv_folder(USAGECOST_DIR) as records:
 
 with open(OUT_PATH_INSTANCES, 'w') as outfile:
     writer = csv.writer(outfile)
-    writer.writerow(['ResourceId', 'AvailabilityZone', 'Term', 'Type', 'Cost'])
+    writer.writerow(['ResourceId', 'Name', 'AvailabilityZone', 'Term', 'Type', 'Cost'])
     for instance in sorted(instance_usage_records.keys(), key=lambda tup: instance_usage_records[tup], reverse=True):
         writer.writerow([
             instance[0],
+            instance_name[instance[0]],
             instance[1],
             instance[2],
             instance[3],
