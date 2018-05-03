@@ -30,7 +30,8 @@ NORM_FACTOR = collections.OrderedDict([
 ])
 
 TARGET_CPU_USAGE = 0.80
-CPU_USAGE_INTERVAL = datetime.timedelta(hours=12)
+CPU_USAGE_INTERVAL = datetime.timedelta(hours=24)
+CPU_USAGE_INTERVAL_SECOND = CPU_USAGE_INTERVAL.days * 24 * 3600 + CPU_USAGE_INTERVAL.seconds
 DIR_RECOMMENDATION = 'out/instance-size-recommendation'
 
 REGION=boto3._get_default_session().region_name
@@ -43,6 +44,7 @@ InstanceRecommendation = collections.namedtuple('InstanceRecommendation', [
     'name',
     'size',
     'lifecycle',
+    'cpu_usage',
     'recommendation',
     'reason',
 ])
@@ -93,7 +95,7 @@ def get_cpu_usage(cloudwatch, now, instance_id):
         ],
         StartTime=now - CPU_USAGE_INTERVAL,
         EndTime=now,
-        Period=CPU_USAGE_INTERVAL.seconds,
+        Period=CPU_USAGE_INTERVAL_SECOND,
         Statistics=['Average']
     )
     try:
@@ -115,6 +117,7 @@ def get_recommendation(instance):
             name=instance_name,
             size=instance_type_str,
             lifecycle=instance_lifecycle,
+            cpu_usage=cpu_usage or "",
             recommendation=recommendation,
             reason=reason,
             account=ACCOUNT,
