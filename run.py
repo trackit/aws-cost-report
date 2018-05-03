@@ -66,7 +66,7 @@ def parse_args():
         "--xlsx-name",
         help="Name of the XLSX file.",
         dest="xlsx_name",
-        default="trackit_aws_cost_report_{}_{}{}_{}{}".format(now.year, "0" if now.month < 10 else "", now.month, "0" if now.day < 10 else "", now.day),
+        default=now.strftime("trackit_aws_cost_report_%Y_%m_%d"),
     )
     parser.add_argument(
         "--generate-gsheet",
