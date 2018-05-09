@@ -540,7 +540,7 @@ def main(name):
 
 
 if __name__ == '__main__':
-    print("Generating xlsx file.")
     name = sys.argv[1] if len(sys.argv) > 1 else "sheet"
+    print("Generating xlsx file...")
     main(name)
     print("{}.xlsx generated!".format(name))
