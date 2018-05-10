@@ -450,7 +450,11 @@ def ebs_summary(workbook, header_format, val_format):
         worksheet = workbook.add_worksheet("EBS last month")
 
         last_month = datetime.now() + dateutil.relativedelta.relativedelta(months=-1)
-        worksheet.merge_range("A1:C1", "EBS for {}-{:02d}".format(last_month.year, last_month.month), header_format)
+        worksheet.merge_range("A1:E1", "EBS for {}-{:02d}".format(last_month.year, last_month.month), header_format)
+        worksheet.merge_range("A2:A3", "Resource ID", header_format)
+        worksheet.merge_range("B2:B3", "Region", header_format)
+        worksheet.merge_range("C2:C3", "Cost", header_format)
+        worksheet.merge_range("D2:E2", "Instance Linked", header_format)
 
         cur_format = workbook.add_format()
         cur_format.set_align("center")
@@ -464,10 +468,12 @@ def ebs_summary(workbook, header_format, val_format):
             "ResourceId": [0, "Resource Id", str, val_format],
             "Region": [1, "Region", str, val_format],
             "Cost": [2, "Cost", transform, cur_format],
+            "InstanceId": [3, "ID", str, val_format],
+            "InstanceName": [4, "Name", str, val_format],
         }
         for v in refs.values():
-            worksheet.write(1, v[0], v[1], header_format)
-        for i, line in zip(itertools.count(2), reader):
+            worksheet.write(2, v[0], v[1], header_format)
+        for i, line in zip(itertools.count(3), reader):
             for h, v in line.items():
                 worksheet.write(i, refs[h][0], refs[h][2](v), refs[h][3])
 

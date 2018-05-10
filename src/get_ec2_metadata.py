@@ -34,7 +34,7 @@ def get_ec2_metadata(ec2, region):
         {
             'instance_id': i.get('InstanceId', ''),
             'name': safe_list_get([v['Value'] for v in i.get('Tags', []) if v['Key'] == 'Name'], 0, ''),
-            'ebs': [e.get('Ebs', {}).get('VolumeId', '') for e in i.get('BlockDeviceMappings', [])],
+            'ebs': ','.join([e.get('Ebs', {}).get('VolumeId', '') for e in i.get('BlockDeviceMappings', [])]),
         }
         for p in instances_pag.paginate()
         for r in p['Reservations']
