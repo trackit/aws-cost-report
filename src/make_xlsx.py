@@ -66,7 +66,7 @@ def gen_reserved_summary(workbook, header_format, val_format):
         worksheet.merge_range("A1:D1", "Reservation", header_format)
         worksheet.merge_range("E1:F1", "Count", header_format)
         worksheet.merge_range("G1:I1", "Cost per instance", header_format)
-        worksheet.merge_range("J1:L1", "Monthly cost total", header_format)
+        worksheet.merge_range("J1:L1", "Total monthly cost", header_format)
         worksheet.merge_range("M1:N1", "Savings over on demand", header_format)
 
         green_format = workbook.add_format()
@@ -139,7 +139,7 @@ def gen_reservation_usage_summary(workbook, header_format, val_format):
         worksheet.set_column("A:J", 18)
         worksheet.merge_range("A1:D1", "Reservation", header_format)
         worksheet.merge_range("E1:F1", "Count", header_format)
-        worksheet.merge_range("G1:A1", "Cost per instance", header_format)
+        worksheet.merge_range("G1:I1", "Cost per instance", header_format)
         worksheet.merge_range("J1:J2", "Monthly losses", header_format)
 
         cur_format = workbook.add_format()
@@ -153,8 +153,8 @@ def gen_reservation_usage_summary(workbook, header_format, val_format):
             "availability_zone": [1, "Availability zone", str, val_format],
             "tenancy": [2, "Tenancy", str, val_format],
             "product": [3, "Product", str, val_format],
-            "count_used": [4, "Running", int, val_format],
-            "count": [5, "Reserved", int, val_format],
+            "count": [4, "Reserved", int, val_format],
+            "count_used": [5, "Used", int, val_format],
             "cost_upfront": [6, "Upfront", float, cur_format],
             "cost_hourly": [7, "Hourly", float, cur_format],
             "effective_cost": [8, "Effective", float, cur_format],
@@ -174,7 +174,7 @@ def gen_reservation_usage_summary(workbook, header_format, val_format):
             )
             worksheet.write(
                 i, refs["monthly_losses"][0],
-                "=(F{}-E{})*I{}*720".format(*[i+1]
+                "=(E{}-F{})*I{}*720".format(*[i+1]
                                             * 3), refs["monthly_losses"][3],
                 (float(line["count"]) - float(line["count_used"])
                  ) * effective_cost * 720,
