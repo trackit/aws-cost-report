@@ -11,22 +11,22 @@ import boto3
 # Normalization factors can be found at
 # https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ri-modifying.html#ri-modification-instancemove
 NORM_FACTOR = collections.OrderedDict([
-    ('nano'     , 1)       ,
-    ('micro'    , 2)       ,
-    ('small'    , 1 * 4)   ,
-    ('medium'   , 2 * 4)   ,
-    ('large'    , 4 * 4)   ,
-    ('xlarge'   , 8 * 4)   ,
-    ('2xlarge'  , 16 * 4)  ,
-    ('4xlarge'  , 32 * 4)  ,
-    ('8xlarge'  , 64 * 4)  ,
-    ('9xlarge'  , 72 * 4)  ,
-    ('10xlarge' , 80 * 4)  ,
-    ('12xlarge' , 96 * 4)  ,
-    ('16xlarge' , 128 * 4) ,
-    ('18xlarge' , 144 * 4) ,
-    ('24xlarge' , 192 * 4) ,
-    ('32xlarge' , 256 * 4) ,
+    ('nano'     , 1      , [])       ,
+    ('micro'    , 2      , [])       ,
+    ('small'    , 1 * 4  , [])   ,
+    ('medium'   , 2 * 4  , [])   ,
+    ('large'    , 4 * 4  , [])   ,
+    ('xlarge'   , 8 * 4  , [])   ,
+    ('2xlarge'  , 16 * 4 , [])  ,
+    ('4xlarge'  , 32 * 4 , [])  ,
+    ('8xlarge'  , 64 * 4 , [])  ,
+    ('9xlarge'  , 72 * 4 , [])  ,
+    ('10xlarge' , 80 * 4 , [])  ,
+    ('12xlarge' , 96 * 4 , [])  ,
+    ('16xlarge' , 128 * 4, []) ,
+    ('18xlarge' , 144 * 4, []) ,
+    ('24xlarge' , 192 * 4, []) ,
+    ('32xlarge' , 256 * 4, []) ,
 ])
 
 TARGET_CPU_USAGE = 0.80
@@ -46,6 +46,7 @@ InstanceRecommendation = collections.namedtuple('InstanceRecommendation', [
     'lifecycle',
     'cpu_usage',
     'recommendation',
+    'saving',
     'reason',
 ])
 
@@ -86,6 +87,15 @@ def get_reason(cpu_usage, current_size, recommendation):
         return 'Optimal CPU usage average'
     return 'Low CPU usage average: {0:.3f}%'.format(cpu_usage*100)
 
+def get_saving(cpu_usage, current_size, recommendation):
+    current_norm_factor = NORM_FACTOR.get(current_size, 0)
+    recommended_norm_factor = NORM_FACTOR.get(recommendation, 0)
+    if cpu_usage is None or current_norm_factor == 0 or recommended_norm_factor == 0:
+        return '0%'
+    else:
+        return '{0:.1f}%'.format(100 - ((recommended_norm_factor * 100) / current_norm_factor))
+
+
 def get_cpu_usage(cloudwatch, now, instance_id):
     usage_statistics = cloudwatch.get_metric_statistics(
         Namespace='AWS/EC2',
@@ -112,6 +122,7 @@ def get_recommendation(instance):
         cpu_usage = get_cpu_usage(cloudwatch, now, instance_id)
         recommendation = recommended_size(instance_type.size, cpu_usage) if cpu_usage is not None else 'insufficient_data'
         reason = get_reason(cpu_usage, instance_type.size, recommendation)
+        saving = get_saving(cpu_usage, instance_type.size, recommendation)
         return InstanceRecommendation(
             id=instance_id,
             name=instance_name,
@@ -120,6 +131,7 @@ def get_recommendation(instance):
             cpu_usage=cpu_usage or "",
             recommendation=recommendation,
             reason=reason,
+            saving=saving,
             account=ACCOUNT,
         )
 
