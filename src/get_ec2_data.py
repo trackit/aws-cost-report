@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import botocore
 import boto3
 import itertools
 import collections
@@ -7,15 +8,13 @@ import csv
 import sys
 import datetime
 import json
-import pprint
 import collections
 import re
 from dateutil.tz import tzutc
+from threading import Thread
 
 import mockdata
 from mytypes import *
-
-pp = pprint.PrettyPrinter(indent=4)
 
 compute_sheet_region = {
     'us-east-2'      : 'US East (Ohio)',
@@ -161,7 +160,7 @@ def get_ondemand_instance_types(ec2):
         for k, v in instance_counts.items()
     ]
 
-def get_ec2_type_offerings(ec2, instance_type):
+def get_ec2_type_offerings(ec2, instance_type, container):
     offerings = itertools.chain.from_iterable(
         page['ReservedInstancesOfferings']
         for page in ec2.get_paginator('describe_reserved_instances_offerings').paginate(
@@ -176,12 +175,15 @@ def get_ec2_type_offerings(ec2, instance_type):
             ],
         )
     )
-    offerings = sorted(offerings, key=reserved_instance_offering_cost_per_hour)
+    try:
+        offerings = sorted(offerings, key=reserved_instance_offering_cost_per_hour)
+    except botocore.exceptions.ClientError:
+        # Handling api limits
+        return get_ec2_type_offerings(ec2, instance_type, container)
     try:
         offering_best = offerings[0]
         offering_worst = offerings[-1]
     except IndexError:
-        print('found no offerings for {}'.format(instance_type), file=sys.stderr)
         return None
     ondemand = next(
         c
@@ -199,12 +201,27 @@ def get_ec2_type_offerings(ec2, instance_type):
         cost_reserved_best  = reserved_instance_offering_cost_per_hour(offering_best),
         cost_ondemand       = ondemand,
     )
-    pp.pprint(res)
+    container[instance_type] = res
     return res
 
 def get_instance_offerings(ec2, instance_types):
-    offerings = (get_ec2_type_offerings(ec2, ityp) for ityp in instance_types)
-    return [o for o in offerings if o]
+    threads = []
+    container = {}
+    for ityp in instance_types:
+        threads.append(Thread(target=get_ec2_type_offerings, args=(ec2, ityp, container)))
+
+    # 4 threads max launched at a time (due to aws api limits)
+    c = 0
+    for i in range(1, len(threads)+1):
+        threads[i-1].start()
+        c += 1
+        if i % 4 == 0 or i == len(threads):
+            while c > 0:
+                c -= 1
+                threads[i-1-c].join()
+                print("[{} - {}] Getting offerings for all instances {}/{}!".format(ACCOUNT, REGION, i-c, len(threads)))
+            c = 0
+    return [o for o in container.values() if o]
 
 def instance_type_matches(pattern, example):
     def get_generic_type(instancetype):
@@ -227,8 +244,6 @@ def get_instance_matchings(instance_offerings, reserved_instances, ondemand_inst
         [ri, ri.count]
         for ri in reserved_instances
     ]
-    print("BEGIN MATCHING")
-    pp.pprint(remaining_reserved_instances)
     matches = []
     for oi in sorted(ondemand_instances, reverse=True, key=lambda oi: oi[0].availability_zone[::-1]):
         matching_reserved = (
@@ -254,31 +269,27 @@ def get_instance_matchings(instance_offerings, reserved_instances, ondemand_inst
                 )
             )
         except StopIteration:
-            print("no match for {}".format(oi[0]), file=sys.stderr)
+            pass
     reservations_usage = [
         (ri, ri.count - remaining)
         for [ri, remaining] in remaining_reserved_instances
     ]
-    pp.pprint(matches)
-    pp.pprint(reservations_usage)
     return matches, reservations_usage
 
 
 def get_ec2_reservation_data(ec2, region):
-    print("Getting reserved instances...")
+    print("[{} - {}] Getting reserved instances...".format(ACCOUNT, region))
     reserved_instances = mockdata.reserved_instances or get_reserved_instances(ec2, region)
-    pp.pprint(reserved_instances)
-    print("Getting on-demand instances...")
+    print("[{} - {}] Getting on-demand instances...".format(ACCOUNT, region))
     ondemand_instances = mockdata.ondemand_instances or get_ondemand_instance_types(ec2)
-    pp.pprint(ondemand_instances)
-    print("Getting offerings for all instances...")
+    print("[{} - {}] Getting offerings for all instances...".format(ACCOUNT, region))
     instance_offerings = mockdata.instance_offerings or get_instance_offerings(
         ec2,
         frozenset(oi[0] for oi in ondemand_instances) | frozenset(ri.type for ri in reserved_instances),
     )
-    print("Matching on-demand instances with reserved instances...")
+    print("[{} - {}] Matching on-demand instances with reserved instances...".format(ACCOUNT, region))
     matched_instances, reservation_usage = get_instance_matchings(instance_offerings, reserved_instances, ondemand_instances)
-    print("Done!")
+    print("[{} - {}] Done!".format(ACCOUNT, region))
     return matched_instances, reservation_usage
 
 def write_matched_instances(f, matched_instances, header=True):

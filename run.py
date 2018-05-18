@@ -11,6 +11,7 @@ import zipfile
 import gzip
 import time
 import shutil
+import itertools
 import dateutil.relativedelta
 from datetime import datetime
 
@@ -226,9 +227,16 @@ def do_get_billing_data(profile, bucket, prefix):
 
 
 def do_get_instance_data(profile, region):
-    os.system("{} src/get_ec2_data.py".format(awsenv(profile, region)))
-    os.system("{} src/get_ec2_recommendations.py".format(awsenv(profile, region)))
-    os.system("{} src/get_ec2_metadata.py".format(awsenv(profile, region)))
+    threads = []
+    for cmd in (
+            "{} src/get_ec2_data.py".format(awsenv(profile, region)),
+            "{} src/get_ec2_recommendations.py".format(awsenv(profile, region)),
+            "{} src/get_ec2_metadata.py".format(awsenv(profile, region)),
+        ):
+        threads.append(threading.Thread(target=os.system, args=[cmd]))
+        threads[-1].start()
+    for t in threads:
+        t.join()
 
 
 def recursivly_remove_file(path):
@@ -268,15 +276,26 @@ def main():
         print("Download billings for {}...".format(bill[0]))
         do_get_billing_data(*bill)
     for ec in args.ec2:
+        threads = []
         session = get_session(ec[0])
         regions = get_regions(session)
         for region in regions:
-            do_get_instance_data(ec[0], region)
+            print("Fetching ec2 data for {} in {}...".format(ec[0], region))
+            threads.append((region, threading.Thread(target=do_get_instance_data, args=(ec[0], region))))
+            threads[-1][1].start()
+        for t in threads:
+            t[1].join()
+            print("Fetched ec2 data for {} in {}".format(ec[0], t[0]))
     if args.generate_gsheet or args.generate_xslx:
-        build_billing_diff()
-        build_instance_history()
-        build_ec2_last_month_usage()
-        build_ebs_last_month_usage()
+        fcts = [
+            ("billing diff", build_billing_diff),
+            ("instance history", build_instance_history),
+            ("ec2 last month", build_ec2_last_month_usage),
+            ("ebs last month", build_ebs_last_month_usage)
+        ]
+        for i, fct in zip(itertools.count(1), fcts):
+            print("Processing billing data ({}/{} - {})...".format(i, len(fcts), fct[0]))
+            fct[1]()
         if args.generate_gsheet:
             build_gsheet()
         if args.generate_xslx:

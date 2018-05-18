@@ -82,9 +82,6 @@ with open(OUT_MONTHS, 'w') as monthsfile:
 #        first_month = int(row['month']) if first_month == -1 else min(int(row['month']), first_month)
 #        last_month = int(row['month']) if last_month == -1 else max(int(row['month']), last_month)
 
-print(first_month)
-print(last_month)
-
 breakdown_by_date = collections.defaultdict(lambda: list([.0] * (last_month - first_month + 1)))
 for (month, product), cost in breakdown.items():
     breakdown_by_date[product][month - first_month] += cost

@@ -7,12 +7,9 @@ import csv
 import sys
 import datetime
 import json
-import pprint
 import collections
 import re
 from dateutil.tz import tzutc
-
-pp = pprint.PrettyPrinter(indent=4)
 
 DIR_INSTANCE_METADATA = 'out/instance-metadata'
 
@@ -28,7 +25,7 @@ def safe_list_get(l, idx, default):
 
 
 def get_ec2_metadata(ec2, region):
-    print("Getting instances metadata for {} in {}...".format(ACCOUNT, REGION))
+    print("[{} - {}] Getting instances metadata...".format(ACCOUNT, REGION))
     instances_pag = ec2.get_paginator('describe_instances')
     metadata = [
         {
@@ -40,7 +37,7 @@ def get_ec2_metadata(ec2, region):
         for r in p['Reservations']
         for i in r['Instances']
     ]
-    print('Done!')
+    print('[{} - {}] Done!'.format(ACCOUNT, REGION))
     return metadata
 
 
