@@ -7,6 +7,7 @@ import json
 import datetime
 import os
 import pprint
+from collections import defaultdict
 import xlsxwriter
 from datetime import datetime
 import dateutil.relativedelta
@@ -387,6 +388,7 @@ def gen_instance_size_recommendations(workbook, header_format, val_format):
 
 def instance_summary(workbook, header_format, val_format):
     bandwidth_usage = {}
+    ebs_usage = defaultdict(int)
     def transform(x):
         try:
             if x == "": return 0.0
@@ -397,13 +399,17 @@ def instance_summary(workbook, header_format, val_format):
         reader = csv.reader(f)
         for i, line in itertools.islice(zip(itertools.count(2), reader), 1, None):
             bandwidth_usage[line[0]] = transform(line[1])
+    with open(IN_EBS_USAGE_LAST_MONTH) as f:
+        reader = csv.reader(f)
+        for line in itertools.islice(reader, 1, None):
+            ebs_usage[line[3]] += transform(line[2])
     with open(IN_INSTANCE_USAGE_LAST_MONTH) as f:
         reader = csv.DictReader(f)
         worksheet = workbook.add_worksheet("EC2 instances last month")
 
         last_month = datetime.now() + dateutil.relativedelta.relativedelta(months=-1)
-        worksheet.merge_range("A1:G1", "Instances for {}-{:02d}".format(last_month.year, last_month.month), header_format)
-        worksheet.merge_range("H1:H2", "Total", header_format)
+        worksheet.merge_range("A1:H1", "Instances for {}-{:02d}".format(last_month.year, last_month.month), header_format)
+        worksheet.merge_range("I1:I2", "Total", header_format)
 
         cur_format = workbook.add_format()
         cur_format.set_align("center")
@@ -411,7 +417,7 @@ def instance_summary(workbook, header_format, val_format):
         cur_format.set_border()
         cur_format.set_num_format(NUMFORMAT_CURRENCY)
 
-        worksheet.set_column(2, len(reader.fieldnames)+1, 18)
+        worksheet.set_column(2, len(reader.fieldnames)+2, 18)
         worksheet.set_column("A:B", 33)
 
         refs = {
@@ -422,20 +428,21 @@ def instance_summary(workbook, header_format, val_format):
             "Type": [4, "Type", str, val_format],
             "Cost": [5, "Instance cost", transform, cur_format],
             "Bandwidth": [6, "Bandwidth cost", transform, cur_format],
+            "EBS": [7, "EBS cost", transform, cur_format],
         }
         ec2_cost_data = []
         for i, line in zip(itertools.count(2), reader):
             line['Bandwidth'] = refs['Bandwidth'][2](bandwidth_usage.get(line['ResourceId'], ''))
-            line['Total'] = refs['Bandwidth'][2](line['Cost']) + line['Bandwidth']
+            line['EBS'] = refs['EBS'][2](ebs_usage.get(line['ResourceId'], ''))
+            line['Total'] = refs['Cost'][2](line['Cost']) + line['Bandwidth'] + line['EBS']
             ec2_cost_data.append(line)
         ec2_cost_data.sort(key=lambda e: e['Total'], reverse=True)
         for v in refs.values():
             worksheet.write(1, v[0], v[1], header_format)
         for i, line in zip(itertools.count(2), ec2_cost_data):
             for h, v in line.items():
-                if h == 'Total':
-                    continue
-                worksheet.write(i, refs[h][0], refs[h][2](v), refs[h][3])
+                if h != 'Total':
+                    worksheet.write(i, refs[h][0], refs[h][2](v), refs[h][3])
             worksheet.write(i, len(refs), line['Total'], cur_format)
 
 def ebs_summary(workbook, header_format, val_format):
