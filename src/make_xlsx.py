@@ -364,11 +364,12 @@ def gen_instance_size_recommendations(workbook, header_format, val_format):
 
         worksheet.set_column("A:E", 25)
         worksheet.set_column("F:F", 20)
-        worksheet.set_column("G:G", 18)
-        worksheet.set_column("H:H", 35)
+        worksheet.set_column("G:H", 18)
+        worksheet.set_column("I:I", 35)
         worksheet.merge_range("A1:F1", "Instance", header_format)
         worksheet.merge_range("G1:G2", "Recommended", header_format)
-        worksheet.merge_range("H1:H2", "Reason", header_format)
+        worksheet.merge_range("H1:H2", "Potential saving", header_format)
+        worksheet.merge_range("I1:I2", "Reason", header_format)
 
         refs = {
             "account": [0, "Account"],
@@ -378,7 +379,8 @@ def gen_instance_size_recommendations(workbook, header_format, val_format):
             "lifecycle": [4, "Lifecycle"],
             "cpu_usage": [5, "CPU Utilization (Avg.)"],
             "recommendation": [6, "Recommendation"],
-            "reason": [7, "Reason"]
+            "saving": [7, "Saving"],
+            "reason": [8, "Reason"]
         }
         for i in refs.values():
             worksheet.write(1, i[0], i[1], header_format)

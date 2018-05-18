@@ -9,23 +9,25 @@ import boto3
 
 # Normalization factors can be found at
 # https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ri-modifying.html#ri-modification-instancemove
-NORM_FACTOR = collections.OrderedDict([
-    ('nano'     , 1)       ,
-    ('micro'    , 2)       ,
-    ('small'    , 1 * 4)   ,
-    ('medium'   , 2 * 4)   ,
-    ('large'    , 4 * 4)   ,
-    ('xlarge'   , 8 * 4)   ,
-    ('2xlarge'  , 16 * 4)  ,
-    ('4xlarge'  , 32 * 4)  ,
-    ('8xlarge'  , 64 * 4)  ,
-    ('9xlarge'  , 72 * 4)  ,
-    ('10xlarge' , 80 * 4)  ,
-    ('12xlarge' , 96 * 4)  ,
-    ('16xlarge' , 128 * 4) ,
-    ('18xlarge' , 144 * 4) ,
-    ('24xlarge' , 192 * 4) ,
-    ('32xlarge' , 256 * 4) ,
+# Authorized family can be found at
+# https://aws.amazon.com/ec2/pricing/on-demand
+INSTANCE_META = collections.OrderedDict([
+    ('nano'     , [1      , ["t2"]])                                                             ,
+    ('micro'    , [2      , ["t2"]])                                                             ,
+    ('small'    , [1 * 4  , ["t2"]])                                                             ,
+    ('medium'   , [2 * 4  , ["t2"]])                                                             ,
+    ('large'    , [4 * 4  , ["t2", "m5", "m4", "c5", "c4", "r4", "i3"]])                         ,
+    ('xlarge'   , [8 * 4  , ["t2", "m5", "m4", "c5", "c4", "p2", "x1e", "r4", "i3", "d2"]])      ,
+    ('2xlarge'  , [16 * 4 , ["t2", "m5", "m4", "c5", "c4", "p3", "x1e", "r4", "i3", "h1", "d2"]]),
+    ('4xlarge'  , [32 * 4 , ["m5", "m4", "c5", "c4", "g3", "x1e", "r4", "i3", "h1", "d2"]])      ,
+    ('8xlarge'  , [64 * 4 , ["c4", "p2", "p3", "g3", "x1e", "r4", "i3", "h1", "d2"]])            ,
+    ('9xlarge'  , [72 * 4 , ["c5"]])                                                             ,
+    ('10xlarge' , [80 * 4 , ["m4"]])                                                             ,
+    ('12xlarge' , [96 * 4 , ["m5"]])                                                             ,
+    ('16xlarge' , [128 * 4, ["m4", "p2", "p3", "g3", "x1", "x1e", "r4", "i3", "h1"]])            ,
+    ('18xlarge' , [144 * 4, ["c5"]])                                                             ,
+    ('24xlarge' , [192 * 4, ["m5"]])                                                             ,
+    ('32xlarge' , [256 * 4, ["x1", "x1e"]])                                                      ,
 ])
 
 TARGET_CPU_USAGE = 0.80
@@ -45,6 +47,7 @@ InstanceRecommendation = collections.namedtuple('InstanceRecommendation', [
     'lifecycle',
     'cpu_usage',
     'recommendation',
+    'saving',
     'reason',
 ])
 
@@ -69,11 +72,11 @@ def str_to_instance_size(s):
 def instance_size_to_str(instance_size):
     return '{}.{}'.format(*instance_size)
 
-def recommended_size(size, cpu_usage):
-    current_norm_factor = NORM_FACTOR[size]
+def recommended_size(instance_type, cpu_usage):
+    current_norm_factor = INSTANCE_META[instance_type.size][0]
     cpu_delta = cpu_usage / TARGET_CPU_USAGE
     target_norm_factor = cpu_delta * current_norm_factor
-    matching_norm_factor = next(size for size, norm_factor in NORM_FACTOR.items() if norm_factor >= target_norm_factor)
+    matching_norm_factor = next(size for size, meta in INSTANCE_META.items() if meta[0] >= target_norm_factor and instance_type.family in meta[1])
     return matching_norm_factor
 
 def get_reason(cpu_usage, current_size, recommendation):
@@ -84,6 +87,15 @@ def get_reason(cpu_usage, current_size, recommendation):
     elif current_size == recommendation:
         return 'Optimal CPU usage average'
     return 'Low CPU usage average: {0:.3f}%'.format(cpu_usage*100)
+
+def get_saving(cpu_usage, current_size, recommendation):
+    current_norm_factor = INSTANCE_META[current_size][0]
+    recommended_norm_factor = INSTANCE_META.get(recommendation, [0])[0]
+    if cpu_usage is None or current_norm_factor == 0 or recommended_norm_factor == 0:
+        return '0%'
+    else:
+        return '{0:.1f}%'.format(100 - ((recommended_norm_factor * 100) / current_norm_factor))
+
 
 def get_cpu_usage(cloudwatch, now, instance_id):
     usage_statistics = cloudwatch.get_metric_statistics(
@@ -109,8 +121,9 @@ def get_recommendation(instance):
         instance_name = next_or((tag['Value'] for tag in instance.get('Tags', []) if tag['Key'] == 'Name'), '')
         instance_lifecycle = instance.get('InstanceLifecycle', 'ondemand')
         cpu_usage = get_cpu_usage(cloudwatch, now, instance_id)
-        recommendation = recommended_size(instance_type.size, cpu_usage) if cpu_usage is not None else 'insufficient_data'
+        recommendation = recommended_size(instance_type, cpu_usage) if cpu_usage is not None else 'insufficient_data'
         reason = get_reason(cpu_usage, instance_type.size, recommendation)
+        saving = get_saving(cpu_usage, instance_type.size, recommendation)
         return InstanceRecommendation(
             id=instance_id,
             name=instance_name,
@@ -119,6 +132,7 @@ def get_recommendation(instance):
             cpu_usage=cpu_usage or "",
             recommendation=recommendation,
             reason=reason,
+            saving=saving,
             account=ACCOUNT,
         )
 
