@@ -113,7 +113,7 @@ def gen_reserved_summary(workbook, header_format, val_format):
                     float(line["cost_" + h[13:]]) * 720
                 worksheet.write_formula(
                     i, refs[h][0],
-                    "=E{}*{}{}*720".format(i+1, chr(ord('A') +
+                    "=F{}*{}{}*720".format(i+1, chr(ord('A') +
                                                     refs[h][0] - 3), i+1), refs[h][3],
                     res,
                 )
@@ -122,14 +122,14 @@ def gen_reserved_summary(workbook, header_format, val_format):
                                 ) / float(line["cost_ondemand"])
                 worksheet.write_formula(
                     i, refs[h][0],
-                    "=1-{}{}/G{}".format(chr(ord('A') +
+                    "=1-{}{}/H{}".format(chr(ord('A') +
                                              refs[h][0] - 5), i+1, i+1), refs[h][3],
                     res,
                 )
-            worksheet.conditional_format("F{}".format(i+1), {
+            worksheet.conditional_format("G{}".format(i+1), {
                 "type": "cell",
                 "criteria": "equal to",
-                "value": "E{}".format(i+1),
+                "value": "F{}".format(i+1),
                 "format": green_format,
             })
 
@@ -172,12 +172,12 @@ def gen_reservation_usage_summary(workbook, header_format, val_format):
                 line["cost_upfront"]) / 720 + float(line["cost_hourly"])
             worksheet.write_formula(
                 i, refs["effective_cost"][0],
-                "=G{}/720+H{}".format(*[i+1]*2), refs["effective_cost"][3],
+                "=H{}/720+I{}".format(*[i+1]*2), refs["effective_cost"][3],
                 effective_cost,
             )
             worksheet.write(
                 i, refs["monthly_losses"][0],
-                "=(E{}-F{})*I{}*720".format(*[i+1]
+                "=(F{}-G{})*J{}*720".format(*[i+1]
                                             * 3), refs["monthly_losses"][3],
                 (float(line["count"]) - float(line["count_used"])
                  ) * effective_cost * 720,
