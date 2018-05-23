@@ -38,27 +38,29 @@ with utils.csv_folder(USAGECOST_DIR) as records:
             usage_start_date = datetime.strptime(record['lineItem/UsageStartDate'], '%Y-%m-%dT%H:%M:%SZ')
             if usage_start_date >= BEGIN_LAST_MONTH and usage_start_date <= END_LAST_MONTH:
                 if 'Snapshot' not in record['lineItem/UsageType']:
-                    ebs_usage_records[(record['lineItem/ResourceId'], record['product/region'])] += float(record['lineItem/UnblendedCost'])
+                    ebs_usage_records[(record['lineItem/UsageAccountId'], record['lineItem/ResourceId'], record['product/region'])] += float(record['lineItem/UnblendedCost'])
                 elif 'Snapshot' in record['lineItem/UsageType']:
-                    snapshot_usage_records[record['lineItem/ResourceId']] += float(record['lineItem/UnblendedCost'])
+                    snapshot_usage_records[(record['lineItem/UsageAccountId'], record['lineItem/ResourceId'])] += float(record['lineItem/UnblendedCost'])
 
 with open(OUT_PATH_EBS, 'w') as outfile:
     writer = csv.writer(outfile)
-    writer.writerow(['ResourceId', 'Region', 'Cost', 'InstanceId', 'InstanceName'])
+    writer.writerow(['Account', 'ResourceId', 'Region', 'Cost', 'InstanceId', 'InstanceName'])
     for ebs in sorted(ebs_usage_records.keys(), key=lambda tup: ebs_usage_records[tup], reverse=True):
         writer.writerow([
             ebs[0],
             ebs[1],
+            ebs[2],
             repr(ebs_usage_records[ebs]),
-            ebs_links[ebs[0]][0],
-            ebs_links[ebs[0]][1],
+            ebs_links[ebs[1]][0],
+            ebs_links[ebs[1]][1],
         ])
 
 with open(OUT_PATH_SNAPSHOTS, 'w') as outfile:
     writer = csv.writer(outfile)
-    writer.writerow(['ResourceId', 'Cost'])
+    writer.writerow(['Account', 'ResourceId', 'Cost'])
     for rid in sorted(snapshot_usage_records.keys(), key=lambda rid: snapshot_usage_records[rid], reverse=True):
         writer.writerow([
-            rid,
+            rid[0],
+            rid[1],
             repr(snapshot_usage_records[rid]),
         ])

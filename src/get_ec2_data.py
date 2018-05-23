@@ -123,6 +123,10 @@ def get_reserved_instances(ec2, region):
     ]
 
 def get_ondemand_instance_types(ec2):
+    def get_instance_type(instance_type):
+        if instance_type == "windows":
+            return "Windows"
+        return instance_type
     instance_paginator = ec2.get_paginator('describe_instances')
     pages = instance_paginator.paginate(
         Filters=[
@@ -145,7 +149,7 @@ def get_ondemand_instance_types(ec2):
     reservations = itertools.chain.from_iterable(p['Reservations'] for p in pages)
     instances = itertools.chain.from_iterable(r['Instances'] for r in reservations)
     instances = (
-        InstanceType(i['InstanceType'], i['Placement']['AvailabilityZone'], i['Placement']['Tenancy'], i.get('Platform', 'Linux/UNIX'), i.get('VpcId', '') != '')
+        InstanceType(i['InstanceType'], i['Placement']['AvailabilityZone'], i['Placement']['Tenancy'], get_instance_type(i.get('Platform', 'Linux/UNIX')), i.get('VpcId', '') != '')
         for i in instances
         if i.get('InstanceLifecycle', 'ondemand') == 'ondemand'
     )
@@ -294,6 +298,7 @@ def get_ec2_reservation_data(ec2, region):
 
 def write_matched_instances(f, matched_instances, header=True):
     writer = csv.DictWriter(f, fieldnames=[
+        'account',
         'instance_type',
         'availability_zone',
         'tenancy',
@@ -308,6 +313,7 @@ def write_matched_instances(f, matched_instances, header=True):
         writer.writeheader()
     for mi in matched_instances:
         writer.writerow({
+            'account'             : ACCOUNT,
             'instance_type'       : mi.offering.type.size,
             'availability_zone'   : mi.offering.type.availability_zone,
             'tenancy'             : mi.offering.type.tenancy,
@@ -321,6 +327,7 @@ def write_matched_instances(f, matched_instances, header=True):
 
 def write_reservation_usage(f, reservation_usage, header=True):
     writer = csv.DictWriter(f, fieldnames=[
+        'account',
         'instance_type',
         'availability_zone',
         'tenancy',
@@ -334,6 +341,7 @@ def write_reservation_usage(f, reservation_usage, header=True):
         writer.writeheader()
     for ru, used in reservation_usage:
         writer.writerow({
+            'account'           : ACCOUNT,
             'instance_type'     : ru.type.size,
             'availability_zone' : ru.type.availability_zone,
             'tenancy'           : ru.type.tenancy,
