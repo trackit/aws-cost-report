@@ -172,7 +172,6 @@ def do_get_billing_data(profile, bucket, prefix):
         nonlocal it
         nonlocal thread
         nonlocal concurrent_available
-
         for report_key in report_keys:
             if concurrent_available <= 0:
                 print("    Waiting to download {}...".format(report_key))
@@ -217,9 +216,16 @@ def do_get_billing_data(profile, bucket, prefix):
     try:
         session = get_session(profile)
         s3_client = session.client("s3")
-        objs = s3_client.list_objects(Bucket=bucket, Prefix=prefix)["Contents"]
+        page = s3_client.get_paginator("list_objects").paginate(Bucket=bucket, Prefix=prefix)
         min_date = (datetime.now() + dateutil.relativedelta.relativedelta(months=-6)).replace(day=1).strftime('%Y%m%d')
-        objs = [obj for obj in objs if obj["Key"].endswith(".json") and len(obj["Key"].split('/', 1)[-1].split('/')) == 3 and obj["Key"].split('/')[-2] >= min_date]
+        objs = [
+            obj
+            for p in page
+            for obj in p["Contents"]
+            if obj["Key"].endswith(".json") and
+                len(obj["Key"].split('/')) == 4 and
+                obj["Key"].split('/')[-2] >= min_date
+        ]
     except Exception as e:
         exit(e)
     analyze_obj(s3_client, objs)
