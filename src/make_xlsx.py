@@ -307,10 +307,9 @@ def gen_instance_count_history(workbook, header_format, val_format):
         reader = csv.DictReader(f)
         worksheet = workbook.add_worksheet("Instance count history")
 
-        worksheet.set_column(0, len(reader.fieldnames)-1, 18)
+        worksheet.set_column(0, len(reader.fieldnames), 18)
         worksheet.merge_range("A1:A2", "Date", header_format)
-        worksheet.merge_range(0, 1, 0, len(
-            reader.fieldnames)-1, "Instance Count", header_format)
+        worksheet.merge_range(0, 1, 0, len(reader.fieldnames), "Instance Count", header_format)
 
         def transform(x):
             try:
@@ -325,13 +324,15 @@ def gen_instance_count_history(workbook, header_format, val_format):
             header: [
                 i,
                 transform,
-            ] for i, header in zip(itertools.count(), reader.fieldnames)
+            ] for i, header in zip(itertools.count(), reader.fieldnames + ["Total"])
         }
         for h, v in refs.items():
             worksheet.write(1, v[0], h, header_format)
         for i, line in zip(itertools.count(2), reader):
             for h, v in line.items():
                 worksheet.write(i, refs[h][0], refs[h][1](v), val_format)
+            total = sum([transform(v) for h, v in line.items() if h != 'date'])
+            worksheet.write(i, refs['Total'][0], refs['Total'][1](total), val_format)
 
 
 def gen_instance_count_history_chart(workbook, header_format, val_format):
@@ -342,7 +343,7 @@ def gen_instance_count_history_chart(workbook, header_format, val_format):
             "type": "line"
         })
         row_len = len(list(reader))
-        for i, fieldname in zip(itertools.count(1), reader.fieldnames[1:]):
+        for i, fieldname in zip(itertools.count(1), reader.fieldnames[1:] + ["Total"]):
             chart.add_series({
                 "values": ["Instance count history", 2, i, row_len-1, i],
                 "categories": ["Instance count history", 2, 0, row_len-1, 0],
