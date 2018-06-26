@@ -63,6 +63,7 @@ def gen_reserved_summary(workbook, header_format, val_format):
     with utils.csv_folder(IN_INSTANCE_RESERVATION_USAGE_DIR) as records:
         worksheet = workbook.add_worksheet("Reserved instance summary")
 
+        worksheet.freeze_panes(2, 0)
         worksheet.set_column("A:O", 15)
         worksheet.merge_range("A1:E1", "Reservation", header_format)
         worksheet.merge_range("F1:G1", "Count", header_format)
@@ -138,6 +139,7 @@ def gen_reservation_usage_summary(workbook, header_format, val_format):
     with utils.csv_folder(IN_RESERVATION_USAGE_DIR) as records:
         worksheet = workbook.add_worksheet("Reservation usage summary")
 
+        worksheet.freeze_panes(2, 0)
         worksheet.set_column("A:K", 18)
         worksheet.merge_range("A1:E1", "Reservation", header_format)
         worksheet.merge_range("F1:G1", "Count", header_format)
@@ -197,6 +199,7 @@ def gen_weekly_variations(workbook, header_format, val_format):
         )
         worksheet = workbook.add_worksheet("Cost variations")
 
+        worksheet.freeze_panes(3, 1)
         worksheet.set_column("A:A", 30)
         worksheet.set_column("B:M", 14)
         worksheet.merge_range("A1:A3", "Usage type", header_format)
@@ -307,6 +310,7 @@ def gen_instance_count_history(workbook, header_format, val_format):
         reader = csv.DictReader(f)
         worksheet = workbook.add_worksheet("Instance count history")
 
+        worksheet.freeze_panes(2, 1)
         worksheet.set_column(0, len(reader.fieldnames), 18)
         worksheet.merge_range("A1:A2", "Date", header_format)
         worksheet.merge_range(0, 1, 0, len(reader.fieldnames), "Instance Count", header_format)
@@ -374,6 +378,8 @@ def gen_instance_size_recommendations(workbook, header_format, val_format):
         worksheet.merge_range("H1:H2", "Potential saving", header_format)
         worksheet.merge_range("I1:I2", "Reason", header_format)
 
+        worksheet.freeze_panes(2, 0)
+
         refs = {
             "account": [0, "Account"],
             "id": [1, "ID"],
@@ -422,6 +428,7 @@ def instance_summary(workbook, header_format, val_format):
         cur_format.set_border()
         cur_format.set_num_format(NUMFORMAT_CURRENCY)
 
+        worksheet.freeze_panes(2, 0)
         worksheet.set_column(2, len(reader.fieldnames)+2, 18)
         worksheet.set_column("A:C", 33)
 
@@ -476,6 +483,7 @@ def ebs_summary(workbook, header_format, val_format):
         cur_format.set_border()
         cur_format.set_num_format(NUMFORMAT_CURRENCY)
 
+        worksheet.freeze_panes(3, 0)
         worksheet.set_column(0, len(reader.fieldnames)-1, 25)
 
         refs = {
@@ -512,6 +520,7 @@ def snapshots_summary(workbook, header_format, val_format):
         cur_format.set_border()
         cur_format.set_num_format(NUMFORMAT_CURRENCY)
 
+        worksheet.freeze_panes(2, 0)
         worksheet.set_column(0, 0, 25)
         worksheet.set_column(1, 1, 80)
         worksheet.set_column(2, 2, 25)
