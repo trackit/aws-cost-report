@@ -39,8 +39,8 @@ NUMFORMAT_CURRENCY = '#,##0.000 [$USD]'
 NUMFORMAT_PERCENT = '0.00%'
 NUMFORMAT_PERCENT_VAR = '\+0.00%;\-0.00%'
 
-IN_INSTANCE_RESERVATION_USAGE_DIR    = 'out/instance-reservation-usage'
-IN_RESERVATION_USAGE_DIR             = 'out/reservation-usage'
+IN_INSTANCE_RESERVATION_USAGE        = 'out/instance-reservation-usage.csv'
+IN_RESERVATION_USAGE                 = 'out/reservation-usage.csv'
 IN_ABSOLUTE_COST_PER_MONTH           = 'out/absolute.csv'
 IN_INSTANCE_SIZE_RECOMMENDATIONS_DIR = 'out/instance-size-recommendation'
 IN_INSTANCE_HISTORY                  = 'out/instance-history.csv'
@@ -60,15 +60,16 @@ def _with_trailing(it, trail):
 
 
 def gen_reserved_summary(workbook, header_format, val_format):
-    with utils.csv_folder(IN_INSTANCE_RESERVATION_USAGE_DIR) as records:
+    with open(IN_INSTANCE_RESERVATION_USAGE, 'r') as f:
+        reader = csv.DictReader(f)
         worksheet = workbook.add_worksheet("Reserved instance summary")
 
         worksheet.set_column("A:O", 15)
-        worksheet.merge_range("A1:E1", "Reservation", header_format)
-        worksheet.merge_range("F1:G1", "Count", header_format)
-        worksheet.merge_range("H1:J1", "Cost per instance", header_format)
-        worksheet.merge_range("K1:M1", "Total monthly cost", header_format)
-        worksheet.merge_range("N1:O1", "Savings over on demand", header_format)
+        worksheet.merge_range("A1:D1", "Reservation", header_format)
+        worksheet.merge_range("E1:F1", "Count", header_format)
+        worksheet.merge_range("G1:I1", "Cost per instance", header_format)
+        worksheet.merge_range("J1:L1", "Total monthly cost", header_format)
+        worksheet.merge_range("M1:N1", "Savings over on demand", header_format)
 
         green_format = workbook.add_format()
         green_format.set_color(COLOR_GREEN_FG)
@@ -87,25 +88,24 @@ def gen_reserved_summary(workbook, header_format, val_format):
         per_format.set_num_format(NUMFORMAT_PERCENT)
 
         refs = {
-            "account": [0, "Account", str, val_format],
-            "instance_type": [1, "Instance type", str, val_format],
-            "availability_zone": [2, "Availability zone", str, val_format],
-            "tenancy": [3, "Tenancy", str, val_format],
-            "product": [4, "Product", str, val_format],
-            "count": [5, "Running", int, val_format],
-            "count_reserved": [6, "Reserved", int, val_format],
-            "cost_ondemand": [7, "On demand", float, cur_format],
-            "cost_reserved_worst": [8, "Worst reserved", float, cur_format],
-            "cost_reserved_best": [9, "Best reserved", float, cur_format],
-            "cost_monthly_ondemand": [10, "On demand", float, cur_format],
-            "cost_monthly_reserved_worst": [11, "Worst reserved", float, cur_format],
-            "cost_monthly_reserved_best": [12, "Best reserved", float, cur_format],
-            "savings_reserved_worst": [13, "Worst reserved", float, per_format],
-            "savings_reserved_best": [14, "Best reserved", float, per_format],
+            "instance_type": [0, "Instance type", str, val_format],
+            "availability_zone": [1, "Availability zone", str, val_format],
+            "tenancy": [2, "Tenancy", str, val_format],
+            "product": [3, "Product", str, val_format],
+            "count": [4, "Running", int, val_format],
+            "count_reserved": [5, "Reserved", int, val_format],
+            "cost_ondemand": [6, "On demand", float, cur_format],
+            "cost_reserved_worst": [7, "Worst reserved", float, cur_format],
+            "cost_reserved_best": [8, "Best reserved", float, cur_format],
+            "cost_monthly_ondemand": [9, "On demand", float, cur_format],
+            "cost_monthly_reserved_worst": [10, "Worst reserved", float, cur_format],
+            "cost_monthly_reserved_best": [11, "Best reserved", float, cur_format],
+            "savings_reserved_worst": [12, "Worst reserved", float, per_format],
+            "savings_reserved_best": [13, "Best reserved", float, per_format],
         }
         for v in refs.values():
             worksheet.write(1, v[0], v[1], header_format)
-        for i, line in zip(itertools.count(2), records):
+        for i, line in zip(itertools.count(2), reader):
             for h, v in line.items():
                 worksheet.write(i, refs[h][0], refs[h][2](v), refs[h][3])
             for h in ("cost_monthly_ondemand", "cost_monthly_reserved_worst", "cost_monthly_reserved_best"):
@@ -113,7 +113,7 @@ def gen_reserved_summary(workbook, header_format, val_format):
                     float(line["cost_" + h[13:]]) * 720
                 worksheet.write_formula(
                     i, refs[h][0],
-                    "=F{}*{}{}*720".format(i+1, chr(ord('A') +
+                    "=E{}*{}{}*720".format(i+1, chr(ord('A') +
                                                     refs[h][0] - 3), i+1), refs[h][3],
                     res,
                 )
@@ -122,27 +122,32 @@ def gen_reserved_summary(workbook, header_format, val_format):
                                 ) / float(line["cost_ondemand"])
                 worksheet.write_formula(
                     i, refs[h][0],
-                    "=1-{}{}/H{}".format(chr(ord('A') +
+                    "=1-{}{}/G{}".format(chr(ord('A') +
                                              refs[h][0] - 5), i+1, i+1), refs[h][3],
                     res,
                 )
-            worksheet.conditional_format("G{}".format(i+1), {
+            worksheet.conditional_format("F{}".format(i+1), {
                 "type": "cell",
                 "criteria": "equal to",
-                "value": "F{}".format(i+1),
+                "value": "E{}".format(i+1),
                 "format": green_format,
             })
 
 
 def gen_reservation_usage_summary(workbook, header_format, val_format):
-    with utils.csv_folder(IN_RESERVATION_USAGE_DIR) as records:
+    with open(IN_RESERVATION_USAGE, 'r') as f:
+        reader = csv.DictReader(f)
         worksheet = workbook.add_worksheet("Reservation usage summary")
 
-        worksheet.set_column("A:K", 18)
-        worksheet.merge_range("A1:E1", "Reservation", header_format)
-        worksheet.merge_range("F1:G1", "Count", header_format)
-        worksheet.merge_range("H1:J1", "Cost per instance", header_format)
-        worksheet.merge_range("K1:K2", "Monthly losses", header_format)
+        worksheet.set_column("A:J", 18)
+        worksheet.merge_range("A1:D1", "Reservation", header_format)
+        worksheet.merge_range("E1:F1", "Count", header_format)
+        worksheet.merge_range("G1:I1", "Cost per instance", header_format)
+        worksheet.merge_range("J1:J2", "Monthly losses", header_format)
+
+        green_format = workbook.add_format()
+        green_format.set_color(COLOR_GREEN_FG)
+        green_format.set_bg_color(COLOR_GREEN_BG)
 
         cur_format = workbook.add_format()
         cur_format.set_align("center")
@@ -151,33 +156,38 @@ def gen_reservation_usage_summary(workbook, header_format, val_format):
         cur_format.set_num_format(NUMFORMAT_CURRENCY)
 
         refs = {
-            "account": [0, "Account", str, val_format],
-            "instance_type": [1, "Instance type", str, val_format],
-            "availability_zone": [2, "Availability zone", str, val_format],
-            "tenancy": [3, "Tenancy", str, val_format],
-            "product": [4, "Product", str, val_format],
-            "count": [5, "Reserved", int, val_format],
-            "count_used": [6, "Used", int, val_format],
-            "cost_upfront": [7, "Upfront", float, cur_format],
-            "cost_hourly": [8, "Hourly", float, cur_format],
-            "effective_cost": [9, "Effective", float, cur_format],
-            "monthly_losses": [10, "Monthly losses", float, cur_format],
+            "instance_type": [0, "Instance type", str, val_format],
+            "availability_zone": [1, "Availability zone", str, val_format],
+            "tenancy": [2, "Tenancy", str, val_format],
+            "product": [3, "Product", str, val_format],
+            "count": [4, "Reserved", int, val_format],
+            "count_used": [5, "Used", int, val_format],
+            "cost_upfront": [6, "Upfront", float, cur_format],
+            "cost_hourly": [7, "Hourly", float, cur_format],
+            "effective_cost": [8, "Effective", float, cur_format],
+            "monthly_losses": [9, "Monthly losses", float, cur_format],
         }
         for v in refs.values():
             worksheet.write(1, v[0], v[1], header_format)
-        for i, line in zip(itertools.count(2), records):
+        for i, line in zip(itertools.count(2), reader):
             for h, v in line.items():
                 worksheet.write(i, refs[h][0], refs[h][2](v), refs[h][3])
             effective_cost = float(
                 line["cost_upfront"]) / 720 + float(line["cost_hourly"])
             worksheet.write_formula(
                 i, refs["effective_cost"][0],
-                "=H{}/720+I{}".format(*[i+1]*2), refs["effective_cost"][3],
+                "=G{}/720+H{}".format(*[i+1]*2), refs["effective_cost"][3],
                 effective_cost,
             )
+            worksheet.conditional_format("F{}".format(i + 1), {
+                "type": "cell",
+                "criteria": "equal to",
+                "value": "E{}".format(i + 1),
+                "format": green_format,
+            })
             worksheet.write(
                 i, refs["monthly_losses"][0],
-                "=(F{}-G{})*J{}*720".format(*[i+1]
+                "=(E{}-F{})*I{}*720".format(*[i+1]
                                             * 3), refs["monthly_losses"][3],
                 (float(line["count"]) - float(line["count_used"])
                  ) * effective_cost * 720,

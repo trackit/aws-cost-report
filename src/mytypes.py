@@ -35,7 +35,6 @@ InstanceMatching = collections.namedtuple(
     'InstanceMatching',
     [
         'offering',
-        'count_reserved',
         'count',
     ]
 )

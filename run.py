@@ -245,21 +245,25 @@ def do_get_instance_data(profile, region):
         t.join()
 
 
-def recursivly_remove_file(path):
+def do_merge_ec2_data():
+    os.system("src/merge_ec2_data.py")
+
+
+def recursively_remove_file(path):
     if os.path.isdir(path):
         for f in os.listdir(path):
-            recursivly_remove_file(os.path.join(path, f))
+            recursively_remove_file(os.path.join(path, f))
     else:
         os.remove(path)
 
 
 def clear_data():
     for f in os.listdir("out"):
-        recursivly_remove_file(os.path.join("out", f))
+        recursively_remove_file(os.path.join("out", f))
     for f in os.listdir("in"):
         f = os.path.join("in", f)
         if not os.path.isdir(f) or (os.path.isdir(f) and f != "in/persistent"):
-            recursivly_remove_file(f)
+            recursively_remove_file(f)
 
 def get_regions(session):
     client_region = session.region_name or default_region
@@ -292,6 +296,7 @@ def main():
         for t in threads:
             t[1].join()
             print("Fetched ec2 data for {} in {}".format(ec[0], t[0]))
+    do_merge_ec2_data()
     if args.generate_gsheet or args.generate_xslx:
         fcts = [
             ("billing diff", build_billing_diff),

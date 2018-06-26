@@ -185,6 +185,8 @@ def get_ec2_type_offerings(ec2, instance_type, container):
         # Handling api limits
         return get_ec2_type_offerings(ec2, instance_type, container)
     try:
+        print(instance_type.size)
+        print(offerings)
         offering_best = offerings[0]
         offering_worst = offerings[-1]
     except IndexError:
@@ -249,27 +251,13 @@ def get_instance_matchings(instance_offerings, reserved_instances, ondemand_inst
         for ri in reserved_instances
     ]
     matches = []
+    print(instance_offerings)
     for oi in sorted(ondemand_instances, reverse=True, key=lambda oi: oi[0].availability_zone[::-1]):
-        matching_reserved = (
-            rri
-            for rri in sorted(remaining_reserved_instances, reverse=True, key=lambda i: i[0].type.availability_zone[::-1])
-            if rri[1] > 0 and instance_type_matches(rri[0], oi[0])
-        )
-        reserved = 0
-        while reserved < oi[1]:
-            try:
-                ri = next(matching_reserved)
-            except StopIteration:
-                break
-            use = min(ri[1], oi[1] - reserved)
-            ri[1] -= use
-            reserved += use
         try:
             matches.append(
                 InstanceMatching(
                     offering       = next(io for io in instance_offerings if (io.type == oi[0] or io.type == oi[0]._replace(product=oi[0].product+' (Amazon VPC)'))),
                     count          = oi[1],
-                    count_reserved = reserved,
                 )
             )
         except StopIteration:
@@ -278,6 +266,9 @@ def get_instance_matchings(instance_offerings, reserved_instances, ondemand_inst
         (ri, ri.count - remaining)
         for [ri, remaining] in remaining_reserved_instances
     ]
+    print()
+    for r in reservations_usage:
+        print(r)
     return matches, reservations_usage
 
 
@@ -304,7 +295,6 @@ def write_matched_instances(f, matched_instances, header=True):
         'tenancy',
         'product',
         'count',
-        'count_reserved',
         'cost_ondemand',
         'cost_reserved_worst',
         'cost_reserved_best',
@@ -319,7 +309,6 @@ def write_matched_instances(f, matched_instances, header=True):
             'tenancy'             : mi.offering.type.tenancy,
             'product'             : mi.offering.type.product,
             'count'               : mi.count,
-            'count_reserved'      : mi.count_reserved,
             'cost_ondemand'       : mi.offering.cost_ondemand,
             'cost_reserved_worst' : mi.offering.cost_reserved_worst,
             'cost_reserved_best'  : mi.offering.cost_reserved_best,
@@ -335,7 +324,6 @@ def write_reservation_usage(f, reservation_usage, header=True):
         'cost_hourly',
         'cost_upfront',
         'count',
-        'count_used',
     ])
     if header:
         writer.writeheader()
@@ -349,7 +337,6 @@ def write_reservation_usage(f, reservation_usage, header=True):
             'cost_hourly'       : ru.cost_hourly,
             'cost_upfront'      : ru.cost_upfront,
             'count'             : ru.count,
-            'count_used'        : used,
         })
 
 if __name__ == '__main__':
