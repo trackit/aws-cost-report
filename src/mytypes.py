@@ -7,7 +7,15 @@ InstanceType = collections.namedtuple(
         'availability_zone',
         'tenancy',
         'product',
-        'vpc'
+        'vpc',
+    ]
+)
+
+InstanceTypeWithProfile = collections.namedtuple(
+    'InstanceTypeWithProfile',
+    [
+        'profile',
+        'instance_type',
     ]
 )
 
@@ -17,7 +25,15 @@ InstanceReservation = collections.namedtuple(
         'type',
         'cost_hourly',
         'cost_upfront',
+    ]
+)
+
+InstanceReservationCount = collections.namedtuple(
+    'InstanceReservationCount',
+    [
+        'instance_reservation',
         'count',
+        'count_used'
     ]
 )
 
@@ -31,10 +47,11 @@ InstanceOffering = collections.namedtuple(
     ]
 )
 
-InstanceMatching = collections.namedtuple(
-    'InstanceMatching',
+InstanceOfferingCount = collections.namedtuple(
+    'InstanceOfferingCount',
     [
-        'offering',
+        'instance_offering',
         'count',
+        'count_reserved',
     ]
 )

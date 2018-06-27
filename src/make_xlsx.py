@@ -39,8 +39,8 @@ NUMFORMAT_CURRENCY = '#,##0.000 [$USD]'
 NUMFORMAT_PERCENT = '0.00%'
 NUMFORMAT_PERCENT_VAR = '\+0.00%;\-0.00%'
 
-IN_INSTANCE_RESERVATION_USAGE        = 'out/instance-reservation-usage.csv'
-IN_RESERVATION_USAGE                 = 'out/reservation-usage.csv'
+IN_INSTANCE_RESERVATION_USAGE_DIR    = 'out/instance-reservation-usage'
+IN_RESERVATION_USAGE_DIR             = 'out/reservation-usage'
 IN_ABSOLUTE_COST_PER_MONTH           = 'out/absolute.csv'
 IN_INSTANCE_SIZE_RECOMMENDATIONS_DIR = 'out/instance-size-recommendation'
 IN_INSTANCE_HISTORY                  = 'out/instance-history.csv'
@@ -60,8 +60,7 @@ def _with_trailing(it, trail):
 
 
 def gen_reserved_summary(workbook, header_format, val_format):
-    with open(IN_INSTANCE_RESERVATION_USAGE, 'r') as f:
-        reader = csv.DictReader(f)
+    with utils.csv_folder(IN_INSTANCE_RESERVATION_USAGE_DIR) as records:
         worksheet = workbook.add_worksheet("Reserved instance summary")
 
         worksheet.set_column("A:O", 15)
@@ -105,7 +104,7 @@ def gen_reserved_summary(workbook, header_format, val_format):
         }
         for v in refs.values():
             worksheet.write(1, v[0], v[1], header_format)
-        for i, line in zip(itertools.count(2), reader):
+        for i, line in zip(itertools.count(2), records):
             for h, v in line.items():
                 worksheet.write(i, refs[h][0], refs[h][2](v), refs[h][3])
             for h in ("cost_monthly_ondemand", "cost_monthly_reserved_worst", "cost_monthly_reserved_best"):
@@ -135,8 +134,7 @@ def gen_reserved_summary(workbook, header_format, val_format):
 
 
 def gen_reservation_usage_summary(workbook, header_format, val_format):
-    with open(IN_RESERVATION_USAGE, 'r') as f:
-        reader = csv.DictReader(f)
+    with utils.csv_folder(IN_RESERVATION_USAGE_DIR) as records:
         worksheet = workbook.add_worksheet("Reservation usage summary")
 
         worksheet.set_column("A:J", 18)
@@ -169,7 +167,7 @@ def gen_reservation_usage_summary(workbook, header_format, val_format):
         }
         for v in refs.values():
             worksheet.write(1, v[0], v[1], header_format)
-        for i, line in zip(itertools.count(2), reader):
+        for i, line in zip(itertools.count(2), records):
             for h, v in line.items():
                 worksheet.write(i, refs[h][0], refs[h][2](v), refs[h][3])
             effective_cost = float(

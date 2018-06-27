@@ -235,7 +235,6 @@ def do_get_billing_data(profile, bucket, prefix):
 def do_get_instance_data(profile, region):
     threads = []
     for cmd in (
-            "{} src/get_ec2_data.py".format(awsenv(profile, region)),
             "{} src/get_ec2_recommendations.py".format(awsenv(profile, region)),
             "{} src/get_ec2_metadata.py".format(awsenv(profile, region)),
         ):
@@ -243,10 +242,6 @@ def do_get_instance_data(profile, region):
         threads[-1].start()
     for t in threads:
         t.join()
-
-
-def do_merge_ec2_data():
-    os.system("src/merge_ec2_data.py")
 
 
 def recursively_remove_file(path):
@@ -276,6 +271,7 @@ def get_regions(session):
 
 def main():
     args, parser = parse_args()
+    args.ec2 = [a[0] for a in args.ec2] if len(args.ec2) else []
     # if len(args.billing) == 0 and len(args.ec2) == 0:
     #     return parser.print_help()
     if args.clear_before:
@@ -285,18 +281,27 @@ def main():
     for bill in args.billing:
         print("Download billings for {}...".format(bill[0]))
         do_get_billing_data(*bill)
-    for ec in args.ec2:
+    session = get_session(args.ec2[0])
+    regions = get_regions(session)
+    if len(args.ec2):
         threads = []
-        session = get_session(ec[0])
-        regions = get_regions(session)
         for region in regions:
-            print("Fetching ec2 data for {} in {}...".format(ec[0], region))
-            threads.append((region, threading.Thread(target=do_get_instance_data, args=(ec[0], region))))
+            print("Fetching ec2 data for all accounts in {}...".format(region))
+            cmd = "src/get_ec2_data.py --region {} --profile {}".format(region, ' '.join(args.ec2))
+            threads.append((region, threading.Thread(target=os.system, args=[cmd])))
             threads[-1][1].start()
         for t in threads:
             t[1].join()
-            print("Fetched ec2 data for {} in {}".format(ec[0], t[0]))
-    do_merge_ec2_data()
+            print("Fetched ec2 data for all accounts in {}".format(t[0]))
+    for ec in args.ec2:
+        threads = []
+        for region in regions:
+            print("Fetching ec2 metadata for {} in {}...".format(ec, region))
+            threads.append((region, threading.Thread(target=do_get_instance_data, args=(ec, region))))
+            threads[-1][1].start()
+        for t in threads:
+            t[1].join()
+            print("Fetched ec2 metadata for {} in {}".format(ec, t[0]))
     if args.generate_gsheet or args.generate_xslx:
         fcts = [
             ("billing diff", build_billing_diff),
