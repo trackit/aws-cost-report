@@ -325,7 +325,7 @@ def get_ec2_instances(profiles, region):
     return instances
 
 
-def get_ec2_offerings(instances, region):
+def get_ec2_offerings(instances, region, profiles):
     with multiprocessing.pool.ThreadPool(processes=4) as pool:
         offerings = collections.defaultdict(int)
         tasks = []
@@ -333,26 +333,34 @@ def get_ec2_offerings(instances, region):
         for instance, count in instances.items():
             ec2 = boto_session_getter(instance.profile, region)
             tasks.append({
-                'profile': instance.profile,
+                'profile': [instance.profile],
+                'remaining_profiles': [p for p in profiles if p != instance.profile],
                 'instance_type': instance.instance_type,
                 'instance_count': count,
                 'task': pool.apply_async(get_ec2_type_offerings,
                                          [ec2, instance.instance_type]),
             })
-            # offering = get_ec2_type_offerings(ec2, instance)
         for i, task in zip(itertools.count(1), tasks):
-            print('[{} - {}] Getting offerings for instance {}/{}...'.format(
-                instance.profile, region, i, len(instances)))
+            if len(task['profile']) == 1:
+                print('[{} - {}] Getting offerings for instance {}/{}...'.format(
+                    task['profile'][0], region, i, len(instances)))
             offering = task['task'].get()
             if offering:
                 offerings[offering] += task['instance_count']
+            elif len(task['remaining_profiles']):
+                ec2 = boto_session_getter(task['remaining_profiles'][0], region)
+                new_task = task.copy()
+                new_task['task'] = pool.apply_async(get_ec2_type_offerings, [ec2, new_task['instance_type']])
+                new_task['profile'].append(new_task['remaining_profiles'][0])
+                new_task['remaining_profiles'].pop(0)
+                tasks.append(new_task)
     return offerings
 
 
 def get_ec2_data(profiles, region):
     reservations = get_ec2_reservations(profiles, region)
     instances = get_ec2_instances(profiles, region)
-    offerings = get_ec2_offerings(instances, region)
+    offerings = get_ec2_offerings(instances, region, profiles)
     print('[global - {}] Matching on-demand instances with reserved instances...'.format(region))
     matched_instances, reservation_usage = get_instance_matchings(offerings,
                                                                   reservations)
