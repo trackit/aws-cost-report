@@ -192,7 +192,8 @@ def do_get_billing_data(profile, bucket, prefix):
             print("  Getting bill files from {} ({}/{})...".format(obj["Key"], current, total))
             content = s3_client.get_object(Bucket=bucket, Key=obj["Key"])["Body"].read().decode("utf-8")
             content_json = json.loads(content)
-            analyze_report(s3_client, content_json["bucket"], content_json["reportKeys"])
+            if "bucket" in content_json:
+                analyze_report(s3_client, content_json["bucket"], content_json["reportKeys"])
             current += 1
         for t in thread:
             t.join()
@@ -281,9 +282,9 @@ def main():
     for bill in args.billing:
         print("Download billings for {}...".format(bill[0]))
         do_get_billing_data(*bill)
-    session = get_session(args.ec2[0])
-    regions = get_regions(session)
     if len(args.ec2):
+        session = get_session(args.ec2[0])
+        regions = get_regions(session)
         threads = []
         for region in regions:
             print("Fetching ec2 data for all accounts in {}...".format(region))
@@ -293,15 +294,15 @@ def main():
         for t in threads:
             t[1].join()
             print("Fetched ec2 data for all accounts in {}".format(t[0]))
-    for ec in args.ec2:
-        threads = []
-        for region in regions:
-            print("Fetching ec2 metadata for {} in {}...".format(ec, region))
-            threads.append((region, threading.Thread(target=do_get_instance_data, args=(ec, region))))
-            threads[-1][1].start()
-        for t in threads:
-            t[1].join()
-            print("Fetched ec2 metadata for {} in {}".format(ec, t[0]))
+        for ec in args.ec2:
+            threads = []
+            for region in regions:
+                print("Fetching ec2 metadata for {} in {}...".format(ec, region))
+                threads.append((region, threading.Thread(target=do_get_instance_data, args=(ec, region))))
+                threads[-1][1].start()
+            for t in threads:
+                t[1].join()
+                print("Fetched ec2 metadata for {} in {}".format(ec, t[0]))
     if args.generate_gsheet or args.generate_xslx:
         fcts = [
             ("billing diff", build_billing_diff),
