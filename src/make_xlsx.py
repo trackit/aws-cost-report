@@ -48,6 +48,7 @@ IN_INSTANCE_USAGE_LAST_MONTH         = 'out/last-month/ec2_instances.csv'
 IN_EC2_BANDWIDTH_USAGE_LAST_MONTH    = 'out/last-month/ec2_bandwidth.csv'
 IN_EBS_USAGE_LAST_MONTH              = 'out/last-month/ebs.csv'
 IN_SNAPSHOT_USAGE_LAST_MONTH         = 'out/last-month/snapshots.csv'
+IN_S3_COST                           = 'out/s3/current_usage.csv'
 
 COLOR_RED_BG = "#ffcccc"
 COLOR_RED_FG = "#cc0000"
@@ -544,6 +545,48 @@ def snapshots_summary(workbook, header_format, val_format):
             for h, v in line.items():
                 worksheet.write(i, refs[h][0], refs[h][2](v), refs[h][3])
 
+def gen_s3_cost(workbook, header_format, val_format):
+    def transform(x):
+        try:
+            if x == "": return 0.0
+            else: return float(x)
+        except ValueError:
+            return x
+    with open(IN_S3_COST) as f:
+        reader = csv.DictReader(f)
+        worksheet = workbook.add_worksheet("S3 cost")
+
+        worksheet.merge_range("A1:F1", "S3 cost for current month", header_format)
+
+        cur_format = workbook.add_format()
+        cur_format.set_align("center")
+        cur_format.set_align("vcenter")
+        cur_format.set_border()
+        cur_format.set_num_format(NUMFORMAT_CURRENCY)
+
+        worksheet.set_column(0, 0, 45)
+        worksheet.set_column(1, 1, 18)
+        worksheet.set_column(2, 2, 18)
+        worksheet.set_column(3, 3, 18)
+        worksheet.set_column(4, 4, 18)
+        worksheet.set_column(5, 5, 18)
+        worksheet.set_column(6, 6, 18)
+
+        refs = {
+            "Bucket": [0, "Bucket", str, val_format],
+            "Usage-GB-Month": [1, "Usage (GB-Month)", float, val_format],
+            "StorageCost": [2, "Storage cost", transform, cur_format],
+            "BandwidthCost": [3, "Bandwidth cost", transform, cur_format],
+            "RequestsCost": [4, "Requests cost", transform, cur_format],
+            "CurrentTotal": [5, "Current cost", transform, cur_format],
+            "LastMonthTotal": [6, "Last month cost", transform, cur_format],
+        }
+        for v in refs.values():
+            worksheet.write(1, v[0], v[1], header_format)
+        for i, line in zip(itertools.count(2), reader):
+            for h, v in line.items():
+                worksheet.write(i, refs[h][0], refs[h][2](v), refs[h][3])
+
 def gen_introduction(workbook, header_format, val_format):
     worksheet = workbook.add_worksheet("Introduction")
 
@@ -575,6 +618,7 @@ def main(name):
     instance_summary(workbook, header_format, val_format)
     ebs_summary(workbook, header_format, val_format)
     snapshots_summary(workbook, header_format, val_format)
+    gen_s3_cost(workbook, header_format, val_format)
 
     workbook.close()
 

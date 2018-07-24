@@ -110,6 +110,7 @@ try_mkdir("out/instance-reservation-usage")
 try_mkdir("out/instance-size-recommendation")
 try_mkdir("out/instance-metadata")
 try_mkdir("out/last-month")
+try_mkdir("out/s3")
 
 default_region = "us-east-1"
 
@@ -129,6 +130,9 @@ def build_ec2_last_month_usage():
 
 def build_ebs_last_month_usage():
     os.system("src/get_last_month_ebs_cost.py")
+
+def build_s3_cost():
+    os.system("src/get_s3_cost.py")
 
 def build_gsheet():
     os.system("src/make_gsheet.py")
@@ -308,7 +312,8 @@ def main():
             ("billing diff", build_billing_diff),
             ("instance history", build_instance_history),
             ("ec2 last month", build_ec2_last_month_usage),
-            ("ebs last month", build_ebs_last_month_usage)
+            ("ebs last month", build_ebs_last_month_usage),
+            ("s3 cost", build_s3_cost)
         ]
         for i, fct in zip(itertools.count(1), fcts):
             print("Processing billing data ({}/{} - {})...".format(i, len(fcts), fct[0]))
