@@ -564,6 +564,7 @@ def gen_s3_cost(workbook, header_format, val_format):
         cur_format.set_border()
         cur_format.set_num_format(NUMFORMAT_CURRENCY)
 
+        worksheet.freeze_panes(2, 0)
         worksheet.set_column(0, 0, 45)
         worksheet.set_column(1, 1, 18)
         worksheet.set_column(2, 2, 18)
